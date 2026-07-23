@@ -1,7 +1,7 @@
 (() => {
   const root = document.querySelector('#tvcd-app');
   const boot = window.TVCD_BOOT;
-  const state = { types: [], active: null, items: [], loading: true, editor: null, settings: false, siteSettingsPage: false, siteSettings: {}, search: '', appearance: {}, selected: new Set(), sortBy: '', sortOrder: '', installPrompt: null, navOpen: false };
+  const state = { types: [], active: null, items: [], loading: true, loadingMore: false, page: 0, pages: 0, total: 0, requestId: 0, editor: null, settings: false, siteSettingsPage: false, siteSettings: {}, search: '', appearance: {}, selected: new Set(), sortBy: '', sortOrder: '', installPrompt: null, navOpen: false };
   const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const api = async (path, options={}) => {
     const response = await fetch(boot.restUrl + path, {
@@ -48,10 +48,10 @@
 
   function content(type) {
     if (!type) return `<div class="tvcd-empty"><h2>No content types enabled</h2><p>An administrator can choose which content appears in dashboard settings.</p></div>`;
-    return `<div class="tvcd-heading"><div><h2>${esc(type.label)}</h2><p>${state.items.length} of your most recently updated items</p></div><div class="tvcd-heading-actions">${type.config.show_new&&type.canCreate?`<button class="tvcd-btn primary" data-new>${icon('plus-alt2')} New ${esc(type.singular)}</button>`:''}</div></div>
+    return `<div class="tvcd-heading"><div><h2>${esc(type.label)}</h2><p>Showing ${state.items.length} of ${state.total} items</p></div><div class="tvcd-heading-actions">${type.config.show_new&&type.canCreate?`<button class="tvcd-btn primary" data-new>${icon('plus-alt2')} New ${esc(type.singular)}</button>`:''}</div></div>
       <div class="tvcd-toolbar"><label class="tvcd-select-all"><input type="checkbox" data-select-all ${state.items.length&&state.items.every(item=>state.selected.has(item.id))?'checked':''}> Select all</label><div class="tvcd-search">${icon('search')}<input value="${esc(state.search)}" placeholder="Search ${esc(type.label.toLowerCase())}…" data-search></div><select class="tvcd-sort" data-sort-by><option value="modified">Recently updated</option><option value="date">Date created</option><option value="title">Title</option><option value="menu_order">Menu order</option></select><select class="tvcd-sort" data-sort-order><option value="DESC">Descending</option><option value="ASC">Ascending</option></select></div>
       ${state.selected.size?`<div class="tvcd-bulk-bar"><strong>${state.selected.size} selected</strong><select data-bulk-action><option value="">Bulk action…</option><option value="publish">Publish</option><option value="draft">Move to draft</option><option value="trash">Move to trash</option></select><button class="tvcd-btn primary" data-apply-bulk>Apply</button><button class="tvcd-btn" data-clear-selection>Clear</button></div>`:''}
-      ${state.items.length?`<div class="tvcd-grid ${type.config.view==='list'?'list':''}">${state.items.map(card).join('')}</div>`:`<div class="tvcd-empty"><h3>Nothing here yet</h3><p>Create your first ${esc(type.singular.toLowerCase())} to get started.</p></div>`}`;
+      ${state.items.length?`<div class="tvcd-grid ${type.config.view==='list'?'list':''}">${state.items.map(card).join('')}</div>${state.page<state.pages?`<div class="tvcd-load-more" data-load-more aria-live="polite">${state.loadingMore?'<div class="tvcd-spinner"></div>':'<span>Scroll to load more</span>'}</div>`:''}`:`<div class="tvcd-empty"><h3>Nothing here yet</h3><p>Create your first ${esc(type.singular.toLowerCase())} to get started.</p></div>`}`;
   }
 
   function card(item) {
@@ -147,11 +147,23 @@
     return `<div class="tvcd-heading"><div><h2>Site settings</h2><p>Manage the primary identity settings used throughout WordPress.</p></div><div class="tvcd-heading-actions"><button class="tvcd-btn primary" data-save-site-settings>Save site settings</button></div></div><div class="tvcd-settings-section tvcd-site-settings-card"><h3>Site identity</h3><div class="tvcd-field"><label>Site title</label><input type="text" data-site-field="title" value="${esc(site.title||'')}"></div><div class="tvcd-field"><label>Tagline</label><input type="text" data-site-field="tagline" value="${esc(site.tagline||'')}"></div><div class="tvcd-field"><label>Site icon</label><small>The square icon used for browser tabs, bookmarks, and mobile shortcuts.</small><div class="tvcd-logo-control"><div class="tvcd-site-icon-preview">${site.site_icon_url?`<img src="${esc(site.site_icon_url)}" alt="">`:'<span>No site icon</span>'}</div><input type="hidden" data-site-icon-id value="${esc(site.site_icon_id||0)}"><button type="button" class="tvcd-btn" data-pick-site-icon>${icon('format-image')} ${site.site_icon_url?'Change':'Select'} site icon</button>${site.site_icon_url?'<button type="button" class="tvcd-btn danger" data-remove-site-icon>Remove</button>':''}</div></div></div>`;
   }
 
-  async function loadItems() {
+  async function loadItems(append=false) {
     if (!state.active) { state.items=[]; state.loading=false; render(); return; }
-    state.loading=true; render();
-    try { const data=await api(`posts/${state.active}?search=${encodeURIComponent(state.search)}&sort_by=${encodeURIComponent(state.sortBy)}&order=${encodeURIComponent(state.sortOrder)}`); state.items=data.items; }
-    catch(e){ notify(e.message); } state.loading=false; render();
+    if (append && (state.loadingMore || state.page >= state.pages)) return;
+    const requestId=append?state.requestId:++state.requestId;
+    const page=append?state.page+1:1;
+    if(append)state.loadingMore=true;else{state.loading=true;state.loadingMore=false;state.page=0;state.pages=0;state.total=0;}
+    render();
+    try {
+      const data=await api(`posts/${state.active}?page=${page}&search=${encodeURIComponent(state.search)}&sort_by=${encodeURIComponent(state.sortBy)}&order=${encodeURIComponent(state.sortOrder)}`);
+      if(requestId!==state.requestId)return;
+      const known=new Set(state.items.map(item=>item.id));
+      state.items=append?[...state.items,...data.items.filter(item=>!known.has(item.id))]:data.items;
+      state.page=data.page;
+      state.pages=data.pages;
+      state.total=data.total;
+    } catch(e){ if(requestId===state.requestId)notify(e.message); }
+    if(requestId===state.requestId){state.loading=false;state.loadingMore=false;render();}
   }
 
   function bind() {
@@ -182,6 +194,11 @@
     root.querySelector('[data-clear-selection]')?.addEventListener('click',()=>{state.selected.clear();render();});
     root.querySelector('[data-apply-bulk]')?.addEventListener('click',applyBulkAction);
     root.querySelector('[data-install-app]')?.addEventListener('click',installApp);
+    const loadMore=root.querySelector('[data-load-more]');
+    if(loadMore){
+      const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){observer.disconnect();loadItems(true);}}, {rootMargin:'500px 0px'});
+      observer.observe(loadMore);
+    }
     root.querySelectorAll('[data-tab]').forEach(el=>el.onclick=()=>{const group=el.closest('[data-field-group]');group.querySelectorAll('[data-tab]').forEach(t=>t.classList.toggle('active',t===el));group.querySelectorAll('[data-tab-panel]').forEach(panel=>panel.hidden=panel.dataset.tabPanel!==el.dataset.tab);requestAnimationFrame(alignFieldRows);});
     root.querySelectorAll('[data-pick-media]').forEach(el=>el.onclick=()=>openMedia(el.closest('[data-media]')));
     root.querySelectorAll('[data-clear-media]').forEach(el=>el.onclick=()=>{const box=el.closest('[data-media]');box.querySelector('[data-field]').value='';box.querySelector('.tvcd-media-preview').innerHTML='';el.remove();});
