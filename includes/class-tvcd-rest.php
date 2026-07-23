@@ -72,7 +72,7 @@ final class TVCD_REST {
 			$config = TVCD_Settings::for_type( $name );
 			if ( empty( $config['visible_fields_configured'] ) ) {
 				$config['visible_fields'] = array_merge(
-					array( '_post_title', '_excerpt', '_status' ),
+					array( '_post_title', '_excerpt', '_status', '_featured_image' ),
 					array_values(
 						array_map(
 							static function ( $field ) {
@@ -195,7 +195,14 @@ final class TVCD_REST {
 
 		foreach ( (array) ( $data['fields'] ?? array() ) as $key => $value ) {
 			$key = sanitize_text_field( $key );
-			if ( 0 === strpos( $key, 'meta:' ) ) {
+			if ( '_featured_image' === $key ) {
+				$attachment_id = absint( $value );
+				if ( $attachment_id && wp_attachment_is_image( $attachment_id ) ) {
+					set_post_thumbnail( $result, $attachment_id );
+				} elseif ( ! $attachment_id ) {
+					delete_post_thumbnail( $result );
+				}
+			} elseif ( 0 === strpos( $key, 'meta:' ) ) {
 				$meta_key = substr( $key, 5 );
 				if ( self::can_edit_registered_meta( $type, $meta_key, $result ) ) {
 					update_post_meta( $result, $meta_key, $value );
@@ -361,6 +368,10 @@ final class TVCD_REST {
 		$fields = self::fields_for_type( $post->post_type, $post->ID );
 		$values = array();
 		foreach ( $fields as $field ) {
+			if ( '_featured_image' === $field['key'] ) {
+				$values[ $field['key'] ] = self::editor_value( $field, get_post_thumbnail_id( $post ) );
+				continue;
+			}
 			if ( 0 === strpos( $field['key'], '_' ) ) {
 				continue;
 			}

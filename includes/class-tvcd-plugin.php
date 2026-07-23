@@ -52,7 +52,11 @@ final class TVCD_Plugin {
 	}
 
 	public function maybe_upgrade() {
-		if ( get_option( 'tvcd_version' ) !== TVCD_VERSION ) {
+		$installed_version = get_option( 'tvcd_version' );
+		if ( $installed_version !== TVCD_VERSION ) {
+			if ( ! $installed_version || version_compare( $installed_version, '0.8.13', '<' ) ) {
+				TVCD_Settings::migrate_featured_image_visibility();
+			}
 			flush_rewrite_rules( false );
 			update_option( 'tvcd_version', TVCD_VERSION, false );
 		}
