@@ -9,6 +9,7 @@ final class TVCD_Settings {
 		return array(
 			'enabled_post_types' => array( 'page', 'post' ),
 			'post_types'         => array(),
+			'auto_updates'       => false,
 			'appearance'         => array(
 				'brand'      => '#5850ec',
 				'brand_dark' => '#0c084a',
@@ -63,9 +64,21 @@ final class TVCD_Settings {
 			'enabled_post_types' => $enabled,
 			'post_types'         => $post_types,
 			'appearance'         => self::sanitize_appearance( (array) ( $input['appearance'] ?? array() ) ),
+			'auto_updates'       => ! empty( $input['auto_updates'] ),
 		);
 		update_option( self::OPTION, $value, false );
+		self::sync_core_auto_updates( $value['auto_updates'] );
 		return $value;
+	}
+
+	private static function sync_core_auto_updates( $enabled ) {
+		$plugin = plugin_basename( TVCD_FILE );
+		$list   = (array) get_site_option( 'auto_update_plugins', array() );
+		$list   = array_values( array_diff( $list, array( $plugin ) ) );
+		if ( $enabled ) {
+			$list[] = $plugin;
+		}
+		update_site_option( 'auto_update_plugins', array_values( array_unique( $list ) ) );
 	}
 
 	private static function default_icon( $type ) {

@@ -18,6 +18,14 @@ final class TVCD_Updater {
 	private function __construct() {
 		add_filter( 'update_plugins_tinker-valley-content-dashboard', array( $this, 'check_update' ), 10, 4 );
 		add_filter( 'plugins_api', array( $this, 'plugin_information' ), 20, 3 );
+		add_filter( 'auto_update_plugin', array( $this, 'allow_auto_update' ), 10, 2 );
+	}
+
+	public function allow_auto_update( $update, $item ) {
+		if ( ! empty( $item->slug ) && 'tinker-valley-content-dashboard' === $item->slug ) {
+			return ! empty( TVCD_Settings::get()['auto_updates'] );
+		}
+		return $update;
 	}
 
 	public function check_update( $update, $plugin_data, $plugin_file, $locales ) {
