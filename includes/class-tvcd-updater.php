@@ -21,6 +21,8 @@ final class TVCD_Updater {
 		add_filter( 'auto_update_plugin', array( $this, 'allow_auto_update' ), 10, 2 );
 		add_filter( 'plugin_action_links_' . plugin_basename( TVCD_FILE ), array( $this, 'plugin_action_links' ) );
 		add_action( 'admin_action_tvcd_toggle_auto_updates', array( $this, 'toggle_auto_updates' ) );
+		add_action( 'admin_action_tvcd_check_updates', array( $this, 'check_updates_now' ) );
+		add_action( 'delete_site_transient_update_plugins', array( $this, 'clear_release_cache' ) );
 	}
 
 	public function allow_auto_update( $update, $item ) {
@@ -50,6 +52,15 @@ final class TVCD_Updater {
 			esc_url( $url ),
 			esc_html( $enabled ? __( 'Disable automatic updates', 'tinker-valley-content-dashboard' ) : __( 'Enable automatic updates', 'tinker-valley-content-dashboard' ) )
 		);
+		$check_url = wp_nonce_url(
+			add_query_arg( 'action', 'tvcd_check_updates', admin_url( 'admin.php' ) ),
+			'tvcd_check_updates'
+		);
+		$links['tvcd_check_updates'] = sprintf(
+			'<a href="%1$s">%2$s</a>',
+			esc_url( $check_url ),
+			esc_html__( 'Check for updates', 'tinker-valley-content-dashboard' )
+		);
 		return $links;
 	}
 
@@ -62,6 +73,22 @@ final class TVCD_Updater {
 		TVCD_Settings::set_auto_updates( $enabled );
 		wp_safe_redirect( add_query_arg( 'tvcd-auto-updates', $enabled ? 'enabled' : 'disabled', admin_url( 'plugins.php' ) ) );
 		exit;
+	}
+
+	public function check_updates_now() {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			wp_die( esc_html__( 'You do not have permission to check for updates.', 'tinker-valley-content-dashboard' ), 403 );
+		}
+		check_admin_referer( 'tvcd_check_updates' );
+		$this->clear_release_cache();
+		delete_site_transient( 'update_plugins' );
+		wp_update_plugins();
+		wp_safe_redirect( admin_url( 'plugins.php' ) );
+		exit;
+	}
+
+	public function clear_release_cache() {
+		delete_site_transient( 'tvcd_github_release' );
 	}
 
 	public function check_update( $update, $plugin_data, $plugin_file, $locales ) {
@@ -132,7 +159,7 @@ final class TVCD_Updater {
 			)
 		);
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			set_site_transient( 'tvcd_github_release', array(), HOUR_IN_SECONDS );
+			set_site_transient( 'tvcd_github_release', array(), 2 * MINUTE_IN_SECONDS );
 			return false;
 		}
 
@@ -157,7 +184,7 @@ final class TVCD_Updater {
 			'notes'        => (string) ( $data['body'] ?? '' ),
 			'published_at' => sanitize_text_field( $data['published_at'] ?? '' ),
 		);
-		set_site_transient( 'tvcd_github_release', $release, 6 * HOUR_IN_SECONDS );
+		set_site_transient( 'tvcd_github_release', $release, 10 * MINUTE_IN_SECONDS );
 		return $release;
 	}
 }
