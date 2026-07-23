@@ -16,7 +16,7 @@ final class TVCD_Updater {
 	}
 
 	private function __construct() {
-		add_filter( 'update_plugins_tinker-valley-content-dashboard', array( $this, 'check_update' ), 10, 4 );
+		add_filter( 'update_plugins_github.com', array( $this, 'check_update' ), 10, 4 );
 		add_filter( 'plugins_api', array( $this, 'plugin_information' ), 20, 3 );
 		add_filter( 'auto_update_plugin', array( $this, 'allow_auto_update' ), 10, 2 );
 		add_filter( 'plugin_action_links_' . plugin_basename( TVCD_FILE ), array( $this, 'plugin_action_links' ) );
@@ -65,16 +65,19 @@ final class TVCD_Updater {
 	}
 
 	public function check_update( $update, $plugin_data, $plugin_file, $locales ) {
+		if ( empty( $plugin_data['UpdateURI'] ) || 'https://github.com/' . self::REPOSITORY !== untrailingslashit( $plugin_data['UpdateURI'] ) ) {
+			return $update;
+		}
 		$release = $this->get_release();
 		if ( ! $release || empty( $release['version'] ) || version_compare( $release['version'], TVCD_VERSION, '<=' ) ) {
 			return false;
 		}
 
-		return (object) array(
-			'id'           => 'github.com/' . self::REPOSITORY,
+		return array(
+			'id'           => 'https://github.com/' . self::REPOSITORY,
 			'slug'         => 'tinker-valley-content-dashboard',
 			'plugin'       => $plugin_file,
-			'new_version'  => $release['version'],
+			'version'      => $release['version'],
 			'url'          => 'https://github.com/' . self::REPOSITORY,
 			'package'      => $release['package'],
 			'icons'        => array(
