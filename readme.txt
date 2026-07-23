@@ -3,7 +3,7 @@ Contributors: tinkervalley
 Tags: acf, content, dashboard, editor
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.8.5
+Stable tag: 0.8.6
 License: GPLv2 or later
 
 A modern, focused content dashboard for WordPress and Advanced Custom Fields.
@@ -25,6 +25,10 @@ are available in the card configuration and editor.
 4. Use the gear button to configure post types and card layouts.
 
 == Changelog ==
+
+= 0.8.6 =
+* Generate the PWA app icon from the configured dashboard brand, dark-brand, and page colors.
+* Refresh the manifest, Apple touch icon, and service-worker cache when brand colors change.
 
 = 0.8.5 =
 * Make WordPress's forced update check refresh the GitHub release data too.
