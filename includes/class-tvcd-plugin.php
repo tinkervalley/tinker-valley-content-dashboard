@@ -35,7 +35,8 @@ final class TVCD_Plugin {
 	public function add_rewrite_rule() {
 		add_rewrite_rule( '^dashboard/manifest\.webmanifest$', 'index.php?tvcd_manifest=1', 'top' );
 		add_rewrite_rule( '^dashboard/sw\.js$', 'index.php?tvcd_service_worker=1', 'top' );
-		add_rewrite_rule( '^dashboard/icon-(192|512)\.png$', 'index.php?tvcd_icon=$matches[1]', 'top' );
+		add_rewrite_rule( '^dashboard/icon-(180|192|512)\.png$', 'index.php?tvcd_icon=$matches[1]', 'top' );
+		add_rewrite_rule( '^dashboard/apple-touch-icon\.png$', 'index.php?tvcd_icon=180', 'top' );
 		add_rewrite_rule( '^dashboard/?$', 'index.php?tvcd_dashboard=1', 'top' );
 		add_rewrite_rule( '^content-dashboard/?$', 'index.php?tvcd_legacy_dashboard=1', 'top' );
 	}
@@ -234,9 +235,10 @@ self.addEventListener('fetch', event => {
 	}
 
 	private function render_app_icon( $size ) {
-		$size = in_array( $size, array( 192, 512 ), true ) ? $size : 192;
+		$size = in_array( $size, array( 180, 192, 512 ), true ) ? $size : 192;
 		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
-			wp_safe_redirect( TVCD_URL . 'assets/icons/content-dashboard-' . $size . '.png' );
+			$fallback_size = 512 === $size ? 512 : 192;
+			wp_safe_redirect( TVCD_URL . 'assets/icons/content-dashboard-' . $fallback_size . '.png' );
 			exit;
 		}
 
