@@ -16,6 +16,7 @@ final class TVCD_Plugin {
 		add_action( 'init', array( $this, 'add_rewrite_rule' ) );
 		add_action( 'init', array( $this, 'maybe_upgrade' ), 99 );
 		add_filter( 'query_vars', array( $this, 'add_query_var' ) );
+		add_action( 'parse_request', array( $this, 'intercept_icon_request' ) );
 		add_action( 'template_redirect', array( $this, 'render_dashboard' ) );
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_init', array( $this, 'redirect_admin_page' ) );
@@ -157,6 +158,13 @@ final class TVCD_Plugin {
 		$icon_hash  = $this->appearance_hash( $appearance );
 		include TVCD_PATH . 'templates/dashboard.php';
 		exit;
+	}
+
+	public function intercept_icon_request() {
+		$request_path = wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH );
+		if ( is_string( $request_path ) && preg_match( '#/dashboard/(?:apple-touch-icon|icon-(180|192|512))\.png$#', untrailingslashit( $request_path ), $icon_match ) ) {
+			$this->render_app_icon( empty( $icon_match[1] ) ? 180 : (int) $icon_match[1] );
+		}
 	}
 
 	private function render_manifest() {
