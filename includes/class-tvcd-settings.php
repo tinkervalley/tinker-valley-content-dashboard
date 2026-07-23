@@ -71,6 +71,14 @@ final class TVCD_Settings {
 		return $value;
 	}
 
+	public static function set_auto_updates( $enabled ) {
+		$settings = self::get();
+		$settings['auto_updates'] = (bool) $enabled;
+		update_option( self::OPTION, $settings, false );
+		self::sync_core_auto_updates( $settings['auto_updates'] );
+		return $settings['auto_updates'];
+	}
+
 	private static function sync_core_auto_updates( $enabled ) {
 		$plugin = plugin_basename( TVCD_FILE );
 		$list   = (array) get_site_option( 'auto_update_plugins', array() );

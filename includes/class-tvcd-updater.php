@@ -19,6 +19,8 @@ final class TVCD_Updater {
 		add_filter( 'update_plugins_tinker-valley-content-dashboard', array( $this, 'check_update' ), 10, 4 );
 		add_filter( 'plugins_api', array( $this, 'plugin_information' ), 20, 3 );
 		add_filter( 'auto_update_plugin', array( $this, 'allow_auto_update' ), 10, 2 );
+		add_filter( 'plugin_action_links_' . plugin_basename( TVCD_FILE ), array( $this, 'plugin_action_links' ) );
+		add_action( 'admin_action_tvcd_toggle_auto_updates', array( $this, 'toggle_auto_updates' ) );
 	}
 
 	public function allow_auto_update( $update, $item ) {
@@ -26,6 +28,40 @@ final class TVCD_Updater {
 			return ! empty( TVCD_Settings::get()['auto_updates'] );
 		}
 		return $update;
+	}
+
+	public function plugin_action_links( $links ) {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			return $links;
+		}
+		$enabled = ! empty( TVCD_Settings::get()['auto_updates'] );
+		$url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'action'  => 'tvcd_toggle_auto_updates',
+					'enabled' => $enabled ? 0 : 1,
+				),
+				admin_url( 'admin.php' )
+			),
+			'tvcd_toggle_auto_updates'
+		);
+		$links['tvcd_auto_updates'] = sprintf(
+			'<a href="%1$s">%2$s</a>',
+			esc_url( $url ),
+			esc_html( $enabled ? __( 'Disable automatic updates', 'tinker-valley-content-dashboard' ) : __( 'Enable automatic updates', 'tinker-valley-content-dashboard' ) )
+		);
+		return $links;
+	}
+
+	public function toggle_auto_updates() {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			wp_die( esc_html__( 'You do not have permission to change automatic updates.', 'tinker-valley-content-dashboard' ), 403 );
+		}
+		check_admin_referer( 'tvcd_toggle_auto_updates' );
+		$enabled = isset( $_GET['enabled'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['enabled'] ) );
+		TVCD_Settings::set_auto_updates( $enabled );
+		wp_safe_redirect( add_query_arg( 'tvcd-auto-updates', $enabled ? 'enabled' : 'disabled', admin_url( 'plugins.php' ) ) );
+		exit;
 	}
 
 	public function check_update( $update, $plugin_data, $plugin_file, $locales ) {
