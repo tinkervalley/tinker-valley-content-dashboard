@@ -1,0 +1,36 @@
+name: Build WordPress release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build installable plugin
+        run: |
+          mkdir -p staging/tinker-valley-content-dashboard
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='staging' \
+            --exclude='*.zip' \
+            ./ staging/tinker-valley-content-dashboard/
+          cd staging
+          zip -qr ../tinker-valley-content-dashboard.zip tinker-valley-content-dashboard
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            tinker-valley-content-dashboard.zip \
+            --title "Tinker Valley Content Dashboard ${GITHUB_REF_NAME#v}" \
+            --generate-notes

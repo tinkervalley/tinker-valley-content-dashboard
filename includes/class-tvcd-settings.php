@@ -1,0 +1,120 @@
+<?php
+
+defined( 'ABSPATH' ) || exit;
+
+final class TVCD_Settings {
+	const OPTION = 'tvcd_settings';
+
+	public static function defaults() {
+		return array(
+			'enabled_post_types' => array( 'page', 'post' ),
+			'post_types'         => array(),
+			'appearance'         => array(
+				'brand'      => '#5850ec',
+				'brand_dark' => '#0c084a',
+				'ink'        => '#020210',
+				'paper'      => '#f6f6fd',
+				'header'     => '#f6f6fd',
+				'nav_text'   => '#b9b8cb',
+				'logo_id'    => 0,
+				'light_logo_id' => 0,
+			),
+		);
+	}
+
+	public static function get() {
+		return wp_parse_args( get_option( self::OPTION, array() ), self::defaults() );
+	}
+
+	public static function update( $input ) {
+		$available = TVCD_REST::editable_post_types();
+		$enabled   = array_values(
+			array_filter(
+				array_map( 'sanitize_key', (array) ( $input['enabled_post_types'] ?? array() ) ),
+				static function ( $type ) use ( $available ) {
+					return isset( $available[ $type ] );
+				}
+			)
+		);
+
+		$post_types = array();
+		foreach ( (array) ( $input['post_types'] ?? array() ) as $type => $config ) {
+			$type = sanitize_key( $type );
+			if ( ! isset( $available[ $type ] ) ) {
+				continue;
+			}
+			$post_types[ $type ] = array(
+				'view'             => in_array( $config['view'] ?? '', array( 'grid', 'list' ), true ) ? $config['view'] : 'grid',
+				'image_field'      => sanitize_text_field( $config['image_field'] ?? '_featured_image' ),
+				'title_field'      => sanitize_text_field( $config['title_field'] ?? '_post_title' ),
+				'description_field'=> sanitize_text_field( $config['description_field'] ?? '_excerpt' ),
+				'show_new'         => ! empty( $config['show_new'] ),
+				'actions'          => array_values( array_intersect( (array) ( $config['actions'] ?? array( 'edit', 'view' ) ), array( 'edit', 'view', 'delete' ) ) ),
+				'sort_by'          => in_array( $config['sort_by'] ?? '', array( 'date', 'modified', 'title', 'menu_order' ), true ) ? $config['sort_by'] : 'modified',
+				'sort_order'       => in_array( strtoupper( $config['sort_order'] ?? '' ), array( 'ASC', 'DESC' ), true ) ? strtoupper( $config['sort_order'] ) : 'DESC',
+				'visible_fields'   => array_values( array_map( 'sanitize_text_field', (array) ( $config['visible_fields'] ?? array() ) ) ),
+				'visible_fields_configured' => ! empty( $config['visible_fields_configured'] ),
+				'icon'             => self::sanitize_icon( $config['icon'] ?? '', $type ),
+				'menu_label'       => sanitize_text_field( $config['menu_label'] ?? '' ),
+			);
+		}
+
+		$value = array(
+			'enabled_post_types' => $enabled,
+			'post_types'         => $post_types,
+			'appearance'         => self::sanitize_appearance( (array) ( $input['appearance'] ?? array() ) ),
+		);
+		update_option( self::OPTION, $value, false );
+		return $value;
+	}
+
+	private static function default_icon( $type ) {
+		return 'page' === $type ? 'fa-solid fa-file-lines' : ( 'post' === $type ? 'fa-solid fa-pen-to-square' : 'fa-solid fa-table-cells-large' );
+	}
+
+	private static function sanitize_icon( $icon, $type ) {
+		$classes = preg_split( '/\s+/', trim( sanitize_text_field( $icon ) ) );
+		$classes = array_filter(
+			$classes,
+			static function ( $class ) {
+				return (bool) preg_match( '/^fa[a-z0-9-]*$/', $class );
+			}
+		);
+		return $classes ? implode( ' ', array_slice( $classes, 0, 4 ) ) : self::default_icon( $type );
+	}
+
+	private static function sanitize_appearance( $appearance ) {
+		$defaults = self::defaults()['appearance'];
+		return array(
+			'brand'      => sanitize_hex_color( $appearance['brand'] ?? '' ) ?: $defaults['brand'],
+			'brand_dark' => sanitize_hex_color( $appearance['brand_dark'] ?? '' ) ?: $defaults['brand_dark'],
+			'ink'        => sanitize_hex_color( $appearance['ink'] ?? '' ) ?: $defaults['ink'],
+			'paper'      => sanitize_hex_color( $appearance['paper'] ?? '' ) ?: $defaults['paper'],
+			'header'     => sanitize_hex_color( $appearance['header'] ?? '' ) ?: $defaults['header'],
+			'nav_text'   => sanitize_hex_color( $appearance['nav_text'] ?? '' ) ?: $defaults['nav_text'],
+			'logo_id'    => absint( $appearance['logo_id'] ?? 0 ),
+			'light_logo_id' => absint( $appearance['light_logo_id'] ?? 0 ),
+		);
+	}
+
+	public static function for_type( $type ) {
+		$settings = self::get();
+		return wp_parse_args(
+			$settings['post_types'][ $type ] ?? array(),
+			array(
+				'view'              => 'grid',
+				'image_field'       => '_featured_image',
+				'title_field'       => '_post_title',
+				'description_field' => '_excerpt',
+				'show_new'          => true,
+				'actions'           => array( 'edit', 'view' ),
+				'sort_by'           => 'modified',
+				'sort_order'        => 'DESC',
+				'visible_fields'    => array(),
+				'visible_fields_configured' => false,
+				'icon'              => self::default_icon( $type ),
+				'menu_label'        => '',
+			)
+		);
+	}
+}

@@ -1,0 +1,5 @@
+*.zip
+.DS_Store
+.idea/
+.vscode/
+assets/icons/content-dashboard-source.png
