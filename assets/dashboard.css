@@ -29,3 +29,13 @@ body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 .tvcd-nav button{flex:0 0 56px;min-width:56px;width:56px;min-height:52px;height:52px;padding:0;display:grid;place-items:center;border-radius:12px}.tvcd-nav button:hover{transform:none}.tvcd-nav button i{font-size:21px;line-height:1;width:auto;flex:auto}.tvcd-nav button span{display:none}
 .tvcd-notice{bottom:calc(82px + env(safe-area-inset-bottom))}
 }
+.tvcd-grid.list{display:block;background:var(--card,#fff);border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:0 2px 8px rgba(12,8,74,.04)}
+.tvcd-grid.list .tvcd-card{display:grid;grid-template-columns:38px 96px minmax(0,1fr) auto;align-items:center;gap:14px;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;overflow:visible;background:transparent;animation:none}
+.tvcd-grid.list .tvcd-card:last-child{border-bottom:0}.tvcd-grid.list .tvcd-card:hover{transform:none;box-shadow:none;background:color-mix(in srgb,var(--brand) 4%,var(--card,#fff))}
+.tvcd-grid.list .tvcd-card-select{position:static;grid-column:1;padding:0;margin-left:15px;background:transparent;box-shadow:none}.tvcd-grid.list .tvcd-card-select span{display:none}
+.tvcd-grid.list .tvcd-image{grid-column:2;width:96px;height:68px;min-height:0;aspect-ratio:auto;border-radius:9px;margin:10px 0}.tvcd-grid.list .tvcd-card-body{grid-column:3;min-width:0;padding:12px 0}
+.tvcd-grid.list .tvcd-card h3{margin:5px 0 3px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tvcd-grid.list .tvcd-card p{min-height:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tvcd-grid.list .tvcd-card-actions{grid-column:4;align-self:stretch;border:0;border-left:1px solid var(--line);padding:12px 15px;align-items:center}
+@media(max-width:650px){
+.tvcd-grid.list .tvcd-card{grid-template-columns:32px 64px minmax(0,1fr);gap:10px}.tvcd-grid.list .tvcd-card-select{grid-column:1;margin-left:11px}.tvcd-grid.list .tvcd-image{grid-column:2;width:64px;height:56px;margin:10px 0}.tvcd-grid.list .tvcd-card-body{grid-column:3;padding:10px 10px 10px 0}.tvcd-grid.list .tvcd-card-actions{grid-column:2/4;grid-row:2;border:0;border-top:1px solid var(--line);padding:8px 10px;margin-top:-1px}.tvcd-grid.list .tvcd-card p{display:none}
+}
