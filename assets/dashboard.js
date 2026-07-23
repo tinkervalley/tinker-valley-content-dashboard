@@ -37,7 +37,7 @@
       </main>
     </div>${state.editor?editorMarkup():''}`;
     bind();
-    requestAnimationFrame(()=>{alignFieldRows();if(matchMedia('(max-width:800px)').matches)root.querySelector('.tvcd-nav button.active')?.scrollIntoView({block:'nearest',inline:'nearest'});});
+    requestAnimationFrame(()=>{alignFieldRows();updateMobileNavAlignment();});
   }
 
   function applyAppearance() {
@@ -368,7 +368,19 @@
     });
   }
 
-  window.addEventListener('resize',()=>requestAnimationFrame(alignFieldRows));
+  function updateMobileNavAlignment() {
+    if(!matchMedia('(max-width:800px)').matches)return;
+    const nav=root.querySelector('.tvcd-nav');
+    if(!nav)return;
+    const buttons=[...nav.querySelectorAll('button')];
+    const styles=getComputedStyle(nav);
+    const gap=parseFloat(styles.columnGap||styles.gap)||0;
+    const required=buttons.reduce((width,button)=>width+button.offsetWidth,0)+Math.max(0,buttons.length-1)*gap;
+    nav.classList.toggle('is-scrollable',required>nav.clientWidth+1);
+    nav.querySelector('button.active')?.scrollIntoView({block:'nearest',inline:'nearest'});
+  }
+
+  window.addEventListener('resize',()=>requestAnimationFrame(()=>{alignFieldRows();updateMobileNavAlignment();}));
   window.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.navOpen){state.navOpen=false;render();}});
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();state.installPrompt=event;render();});
   window.addEventListener('appinstalled',()=>{state.installPrompt=null;notify('Content Dashboard installed');});
