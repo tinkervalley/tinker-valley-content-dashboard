@@ -151,7 +151,7 @@ final class TVCD_Plugin {
 			),
 			'canManage' => current_user_can( 'manage_options' ),
 			'adminUrl'  => admin_url(),
-			'swUrl'     => home_url( '/dashboard/sw.js' ),
+			'swUrl'     => add_query_arg( 'tvcd_service_worker', 1, home_url( '/dashboard/' ) ),
 		);
 
 		$appearance = $this->appearance();
@@ -239,7 +239,13 @@ self.addEventListener('fetch', event => {
 	}
 
 	private function app_icon_url( $size, $hash ) {
-		return add_query_arg( 'colors', $hash, home_url( '/dashboard/icon-' . (int) $size . '.png' ) );
+		return add_query_arg(
+			array(
+				'tvcd_icon' => (int) $size,
+				'colors'    => $hash,
+			),
+			home_url( '/dashboard/' )
+		);
 	}
 
 	private function render_app_icon( $size ) {

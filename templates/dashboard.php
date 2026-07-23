@@ -8,8 +8,8 @@
 	<meta name="theme-color" content="<?php echo esc_attr( $appearance['brand_dark'] ); ?>">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<link rel="manifest" href="<?php echo esc_url( add_query_arg( 'colors', $icon_hash, home_url( '/dashboard/manifest.webmanifest' ) ) ); ?>">
-	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( add_query_arg( 'colors', $icon_hash, home_url( '/dashboard/apple-touch-icon.png' ) ) ); ?>">
+	<link rel="manifest" href="<?php echo esc_url( add_query_arg( array( 'tvcd_manifest' => 1, 'colors' => $icon_hash ), home_url( '/dashboard/' ) ) ); ?>">
+	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( add_query_arg( array( 'tvcd_icon' => 180, 'colors' => $icon_hash ), home_url( '/dashboard/' ) ) ); ?>">
 	<link rel="stylesheet" href="<?php echo esc_url( TVCD_URL . 'assets/vendor/fontawesome/css/all.min.css?ver=7.3.1' ); ?>">
 	<?php
 	wp_enqueue_style( 'dashicons' );
