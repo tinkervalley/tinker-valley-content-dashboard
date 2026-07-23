@@ -381,8 +381,8 @@ final class TVCD_REST {
 		return array(
 			'id'        => $post->ID,
 			'post_type' => $post->post_type,
-			'title'     => html_entity_decode( get_the_title( $post ) ),
-			'excerpt'   => $post->post_excerpt,
+			'title'     => self::decode_text( get_the_title( $post ) ),
+			'excerpt'   => self::decode_text( $post->post_excerpt ),
 			'status'    => $post->post_status,
 			'fields'    => $fields,
 			'values'    => $values,
@@ -440,16 +440,23 @@ final class TVCD_REST {
 	}
 
 	private static function card_data( $post, $config ) {
+		$title       = self::decode_text( (string) self::display_value( $post, $config['title_field'] ) );
+		$description = self::decode_text( wp_strip_all_tags( (string) self::display_value( $post, $config['description_field'] ) ) );
 		return array(
 			'id'          => $post->ID,
-			'title'       => self::display_value( $post, $config['title_field'] ),
-			'description' => wp_trim_words( wp_strip_all_tags( (string) self::display_value( $post, $config['description_field'] ) ), 24 ),
+			'title'       => $title,
+			'description' => wp_trim_words( $description, 24 ),
 			'image'       => self::image_value( $post, $config['image_field'] ),
 			'status'      => $post->post_status,
 			'modified'    => get_the_modified_date( 'M j, Y', $post ),
 			'viewUrl'     => get_permalink( $post ),
 			'canDelete'   => current_user_can( 'delete_post', $post->ID ),
 		);
+	}
+
+	private static function decode_text( $value ) {
+		$charset = get_bloginfo( 'charset' ) ?: 'UTF-8';
+		return html_entity_decode( (string) $value, ENT_QUOTES | ENT_HTML5, $charset );
 	}
 
 	private static function display_value( $post, $field ) {
