@@ -91,6 +91,48 @@ final class TVCD_Updater {
 		delete_site_transient( 'tvcd_github_release' );
 	}
 
+	public function update_status( $force = false ) {
+		if ( $force ) {
+			$this->clear_release_cache();
+		}
+		$release = $this->get_release();
+		$latest  = $release['version'] ?? TVCD_VERSION;
+		return array(
+			'current'   => TVCD_VERSION,
+			'latest'    => $latest,
+			'available' => (bool) ( $release && version_compare( $latest, TVCD_VERSION, '>' ) ),
+		);
+	}
+
+	public function install_update() {
+		$status = $this->update_status( true );
+		if ( empty( $status['available'] ) ) {
+			return array_merge( $status, array( 'updated' => false, 'message' => __( 'The plugin is already up to date.', 'tinker-valley-content-dashboard' ) ) );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+		delete_site_transient( 'update_plugins' );
+		wp_update_plugins();
+		$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
+		$result   = $upgrader->upgrade( plugin_basename( TVCD_FILE ), array( 'clear_update_cache' => true ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( ! $result ) {
+			return new WP_Error( 'tvcd_update_failed', __( 'WordPress could not install the plugin update. Check filesystem permissions and try again.', 'tinker-valley-content-dashboard' ), array( 'status' => 500 ) );
+		}
+		return array(
+			'current'   => $status['latest'],
+			'latest'    => $status['latest'],
+			'available' => false,
+			'updated'   => true,
+			'message'   => __( 'Plugin updated successfully. Reloading…', 'tinker-valley-content-dashboard' ),
+		);
+	}
+
 	public function check_update( $update, $plugin_data, $plugin_file, $locales ) {
 		if ( empty( $plugin_data['UpdateURI'] ) || 'https://github.com/' . self::REPOSITORY !== untrailingslashit( $plugin_data['UpdateURI'] ) ) {
 			return $update;

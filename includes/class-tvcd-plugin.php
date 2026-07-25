@@ -156,6 +156,7 @@ final class TVCD_Plugin {
 			'canManage' => current_user_can( 'manage_options' ),
 			'adminUrl'  => admin_url(),
 			'swUrl'     => add_query_arg( 'tvcd_service_worker', 1, home_url( '/dashboard/' ) ),
+			'version'   => TVCD_VERSION,
 		);
 
 		$appearance = $this->appearance();

@@ -12,6 +12,8 @@ final class TVCD_REST {
 			'/bulk'                => array( 'POST', 'bulk_action', 'edit_posts' ),
 			'/settings'            => array( 'POST', 'save_settings', 'manage_options' ),
 			'/site-settings'       => array( 'POST', 'save_site_settings', 'manage_options' ),
+			'/update-status'       => array( 'GET', 'update_status', 'update_plugins' ),
+			'/update-plugin'       => array( 'POST', 'update_plugin', 'update_plugins' ),
 		);
 
 		foreach ( $routes as $route => $definition ) {
@@ -246,6 +248,15 @@ final class TVCD_REST {
 
 	public static function save_settings( WP_REST_Request $request ) {
 		return rest_ensure_response( TVCD_Settings::update( (array) $request->get_json_params() ) );
+	}
+
+	public static function update_status() {
+		return rest_ensure_response( TVCD_Updater::instance()->update_status( true ) );
+	}
+
+	public static function update_plugin() {
+		$result = TVCD_Updater::instance()->install_update();
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
 	}
 
 	public static function save_site_settings( WP_REST_Request $request ) {
