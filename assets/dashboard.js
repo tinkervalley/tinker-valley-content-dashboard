@@ -59,11 +59,19 @@
     return `<article class="tvcd-card ${state.selected.has(item.id)?'selected':''}"><label class="tvcd-card-select"><input type="checkbox" data-select-post="${item.id}" ${state.selected.has(item.id)?'checked':''}><span>Select</span></label><div class="tvcd-image">${item.image?`<img src="${esc(item.image)}" alt="" loading="lazy">`:icon('format-image')}</div><div class="tvcd-card-body"><div class="tvcd-card-meta"><i class="tvcd-status ${esc(item.status)}"></i>${esc(item.status)} · ${esc(item.modified)}</div><h3>${esc(item.title||'(Untitled)')}</h3><p>${esc(item.description||'No description')}</p></div><div class="tvcd-card-actions">${actions.includes('edit')?`<button class="tvcd-btn" data-edit="${item.id}">${icon('edit')} Edit</button>`:''}${actions.includes('view')?`<a class="tvcd-btn" href="${esc(item.viewUrl)}" target="_blank">${icon('visibility')}</a>`:''}${actions.includes('delete')&&item.canDelete?`<button class="tvcd-btn danger" data-delete="${item.id}">${icon('trash')}</button>`:''}</div></article>`;
   }
 
+  function mediaPreviewMarkup(kind,item) {
+    const id=Number(item.id||item)||0;
+    const url=item.url||'';
+    if(kind==='file'&&!String(item.type||item.mime||'').startsWith('image/'))return `<span class="tvcd-file-pill">${icon('media-default')} ${esc(item.filename||url||'Selected file')}</span>`;
+    const image=`<img src="${esc(url)}" alt="">`;
+    return kind==='gallery'?`<span class="tvcd-gallery-item" data-media-id="${id}">${image}<button type="button" data-remove-gallery="${id}" aria-label="Remove photo" title="Remove photo">${icon('no-alt')}</button></span>`:image;
+  }
+
   function inputFor(field, value) {
     const v = value ?? '';
     if (field.type==='group') {
       const groupValue=v&&typeof v==='object'&&!Array.isArray(v)?v:{};
-      return `<div class="tvcd-acf-group" data-acf-group="${esc(field.key)}"><div class="tvcd-repeater-fields">${(field.sub_fields||[]).map(sub=>`<div class="tvcd-field" data-subfield="${esc(sub.key)}" style="flex:1 1 calc(${Math.min(100,Math.max(20,parseInt(sub.wrapper?.width||100,10)))}% - 16px)"><label>${esc(sub.label)}${sub.required?' *':''}</label><small class="tvcd-instructions">${sub.instructions?esc(sub.instructions):'&nbsp;'}</small>${inputFor(sub,groupValue[sub.key]??groupValue[sub.name]??'')}</div>`).join('')}</div></div>`;
+      return `<div class="tvcd-acf-group" data-acf-group="${esc(field.key)}"><div class="tvcd-repeater-fields">${(field.sub_fields||[]).map(sub=>`<div class="tvcd-field" data-subfield="${esc(sub.key)}" style="flex:1 1 calc(${Math.min(100,Math.max(20,parseInt(sub.wrapper?.width||100,10)))}% - 16px)"><label>${esc(sub.label)}${sub.required?' *':''}</label><small class="tvcd-instructions">${sub.instructions?esc(sub.instructions):''}</small>${inputFor(sub,groupValue[sub.key]??groupValue[sub.name]??'')}</div>`).join('')}</div></div>`;
     }
     if (field.type==='repeater') {
       const rows=Array.isArray(v)?v:[];
@@ -78,16 +86,17 @@
     if (field.type==='true_false') return `<select data-field="${esc(field.key)}"><option value="0" ${!v?'selected':''}>No</option><option value="1" ${v?'selected':''}>Yes</option></select>`;
     if (['image','file','gallery'].includes(field.type)) {
       const items=mediaValue(v);
-      const preview=items.map(item => field.type==='file'&&!String(item.type||'').startsWith('image/')?`<span class="tvcd-file-pill">${icon('media-default')} ${esc(item.filename||item.url||'Selected file')}</span>`:`<img src="${esc(item.url||'')}" alt="">`).join('');
+      const preview=items.map(item=>mediaPreviewMarkup(field.type,item)).join('');
       const ids=items.map(item=>item.id||item).filter(Boolean).join(',');
-      return `<div class="tvcd-media" data-media="${esc(field.type)}"><div class="tvcd-media-preview">${preview}</div><input type="hidden" data-field="${esc(field.key)}" value="${esc(ids)}"><button type="button" class="tvcd-btn" data-pick-media>${icon(field.type==='file'?'media-default':'format-image')} ${items.length?'Change':'Select'} ${field.type}</button>${items.length?` <button type="button" class="tvcd-btn danger" data-clear-media>Remove</button>`:''}</div>`;
+      const pickLabel=field.type==='gallery'?'Add photos':`${items.length?'Change':'Select'} ${field.type}`;
+      return `<div class="tvcd-media" data-media="${esc(field.type)}"><div class="tvcd-media-preview">${preview}</div><input type="hidden" data-field="${esc(field.key)}" value="${esc(ids)}"><button type="button" class="tvcd-btn" data-pick-media>${icon(field.type==='file'?'media-default':'format-image')} ${pickLabel}</button>${items.length?` <button type="button" class="tvcd-btn danger" data-clear-media>${field.type==='gallery'?'Remove all':'Remove'}</button>`:''}</div>`;
     }
     const type=['number','range'].includes(field.type)?'number':['url','email','date'].includes(field.type)?field.type:'text';
     return `<input type="${type}" data-field="${esc(field.key)}" value="${esc(v)}" placeholder="${esc(field.placeholder||'')}">`;
   }
 
   function repeaterRow(field, row={}, index=0) {
-    return `<div class="tvcd-repeater-row" data-row><div class="tvcd-repeater-head"><span>Row ${index+1}</span><button type="button" class="tvcd-btn danger icon" data-remove-row title="Remove row">${icon('trash')}</button></div><div class="tvcd-repeater-fields">${(field.sub_fields||[]).map(sub=>`<div class="tvcd-field" data-subfield="${esc(sub.key)}" style="flex:1 1 calc(${Math.min(100,Math.max(20,parseInt(sub.wrapper?.width||100,10)))}% - 16px)"><label>${esc(sub.label)}${sub.required?' *':''}</label><small class="tvcd-instructions">${sub.instructions?esc(sub.instructions):'&nbsp;'}</small>${inputFor(sub,row[sub.key]??row[sub.name]??'')}</div>`).join('')}</div></div>`;
+    return `<div class="tvcd-repeater-row" data-row><div class="tvcd-repeater-head"><span>Row ${index+1}</span><button type="button" class="tvcd-btn danger icon" data-remove-row title="Remove row">${icon('trash')}</button></div><div class="tvcd-repeater-fields">${(field.sub_fields||[]).map(sub=>`<div class="tvcd-field" data-subfield="${esc(sub.key)}" style="flex:1 1 calc(${Math.min(100,Math.max(20,parseInt(sub.wrapper?.width||100,10)))}% - 16px)"><label>${esc(sub.label)}${sub.required?' *':''}</label><small class="tvcd-instructions">${sub.instructions?esc(sub.instructions):''}</small>${inputFor(sub,row[sub.key]??row[sub.name]??'')}</div>`).join('')}</div></div>`;
   }
 
   function groupFields(fields) {
@@ -115,7 +124,7 @@
       }
     });
     const visibleTabs=tabs.filter(t=>chunks[t.key]?.length), hasTabs=visibleTabs.length>1;
-    return `<section class="tvcd-field-group" data-field-group="${esc(group.key)}"><h3 class="tvcd-group-title">${esc(group.label)}</h3>${hasTabs?`<div class="tvcd-tabs">${visibleTabs.map((t,i)=>`<button type="button" class="tvcd-tab ${i===0?'active':''}" data-tab="${esc(t.key)}">${esc(t.label)}</button>`).join('')}</div>`:''}${visibleTabs.map((tab,i)=>`<div class="tvcd-group-fields" data-tab-panel="${esc(tab.key)}" ${hasTabs&&i>0?'hidden':''}>${chunks[tab.key].map(field=>`<div class="tvcd-field" style="flex:1 1 calc(${Math.min(100,Math.max(20,parseInt(field.wrapper?.width||100,10)))}% - 20px)"><label>${esc(field.label)}${field.required?' *':''}</label><small class="tvcd-instructions">${field.instructions?esc(field.instructions):'&nbsp;'}</small>${inputFor(field,values[field.key])}</div>`).join('')}</div>`).join('')}</section>`;
+    return `<section class="tvcd-field-group" data-field-group="${esc(group.key)}"><h3 class="tvcd-group-title">${esc(group.label)}</h3>${hasTabs?`<div class="tvcd-tabs">${visibleTabs.map((t,i)=>`<button type="button" class="tvcd-tab ${i===0?'active':''}" data-tab="${esc(t.key)}">${esc(t.label)}</button>`).join('')}</div>`:''}${visibleTabs.map((tab,i)=>`<div class="tvcd-group-fields" data-tab-panel="${esc(tab.key)}" ${hasTabs&&i>0?'hidden':''}>${chunks[tab.key].map(field=>`<div class="tvcd-field" style="flex:1 1 calc(${Math.min(100,Math.max(20,parseInt(field.wrapper?.width||100,10)))}% - 20px)"><label>${esc(field.label)}${field.required?' *':''}</label><small class="tvcd-instructions">${field.instructions?esc(field.instructions):''}</small>${inputFor(field,values[field.key])}</div>`).join('')}</div>`).join('')}</section>`;
   }
 
   function editorMarkup() {
@@ -203,6 +212,7 @@
     root.querySelectorAll('[data-tab]').forEach(el=>el.onclick=()=>{const group=el.closest('[data-field-group]');group.querySelectorAll('[data-tab]').forEach(t=>t.classList.toggle('active',t===el));group.querySelectorAll('[data-tab-panel]').forEach(panel=>panel.hidden=panel.dataset.tabPanel!==el.dataset.tab);requestAnimationFrame(alignFieldRows);});
     root.querySelectorAll('[data-pick-media]').forEach(el=>el.onclick=()=>openMedia(el.closest('[data-media]')));
     root.querySelectorAll('[data-clear-media]').forEach(el=>el.onclick=()=>{const box=el.closest('[data-media]');box.querySelector('[data-field]').value='';box.querySelector('.tvcd-media-preview').innerHTML='';el.remove();});
+    root.querySelectorAll('[data-remove-gallery]').forEach(el=>bindGalleryRemove(el.closest('[data-media]')));
     bindRepeaters();
     let timer; root.querySelector('[data-search]')?.addEventListener('input',e=>{state.search=e.target.value;clearTimeout(timer);timer=setTimeout(loadItems,350);});
   }
@@ -280,6 +290,7 @@
   function bindDynamicEditorControls(scope) {
     scope.querySelectorAll('[data-pick-media]').forEach(el=>el.onclick=()=>openMedia(el.closest('[data-media]')));
     scope.querySelectorAll('[data-clear-media]').forEach(el=>bindMediaClear(el.closest('[data-media]')));
+    scope.querySelectorAll('[data-remove-gallery]').forEach(el=>bindGalleryRemove(el.closest('[data-media]')));
     bindRepeaters();
   }
 
@@ -289,16 +300,18 @@
     const frame=wp.media({button:{text:'Use selected media'},library:kind==='file'?{}:{type:'image'},multiple});
     frame.on('select',()=>{
       const selected=frame.state().get('selection').toJSON();
-      const items=multiple?selected:selected.slice(0,1);
-      box.querySelector('[data-field]').value=items.map(item=>item.id).join(',');
-      box.querySelector('.tvcd-media-preview').innerHTML=items.map(item=>{
-        const url=item.sizes?.medium?.url||item.icon||item.url;
-        return kind==='file'&&!String(item.mime||'').startsWith('image/')?`<span class="tvcd-file-pill">${icon('media-default')} ${esc(item.filename||item.title)}</span>`:`<img src="${esc(url)}" alt="">`;
-      }).join('');
+      const input=box.querySelector('[data-field]');
+      const existing=multiple?input.value.split(',').filter(Boolean).map(Number):[];
+      const additions=selected.filter(item=>!existing.includes(Number(item.id)));
+      const items=multiple?additions:selected.slice(0,1);
+      input.value=(multiple?[...existing,...items.map(item=>item.id)]:items.map(item=>item.id)).join(',');
+      const markup=items.map(item=>mediaPreviewMarkup(kind,{...item,url:item.sizes?.medium?.url||item.icon||item.url,type:item.mime})).join('');
+      if(multiple)box.querySelector('.tvcd-media-preview').insertAdjacentHTML('beforeend',markup);else box.querySelector('.tvcd-media-preview').innerHTML=markup;
       const pick=box.querySelector('[data-pick-media]');
-      pick.innerHTML=`${icon(kind==='file'?'media-default':'format-image')} Change ${kind}`;
-      if(!box.querySelector('[data-clear-media]')) pick.insertAdjacentHTML('afterend',' <button type="button" class="tvcd-btn danger" data-clear-media>Remove</button>');
+      pick.innerHTML=`${icon(kind==='file'?'media-default':'format-image')} ${multiple?'Add photos':`Change ${kind}`}`;
+      if(!box.querySelector('[data-clear-media]')) pick.insertAdjacentHTML('afterend',` <button type="button" class="tvcd-btn danger" data-clear-media>${multiple?'Remove all':'Remove'}</button>`);
       bindMediaClear(box);
+      bindGalleryRemove(box);
     });
     frame.open();
   }
@@ -306,6 +319,17 @@
   function bindMediaClear(box) {
     const clear=box.querySelector('[data-clear-media]');
     if(clear) clear.onclick=()=>{box.querySelector('[data-field]').value='';box.querySelector('.tvcd-media-preview').innerHTML='';clear.remove();};
+  }
+
+  function bindGalleryRemove(box) {
+    box.querySelectorAll('[data-remove-gallery]').forEach(button=>button.onclick=()=>{
+      const item=button.closest('[data-media-id]');
+      const removed=Number(item.dataset.mediaId);
+      const input=box.querySelector('[data-field]');
+      input.value=input.value.split(',').filter(Boolean).map(Number).filter(id=>id!==removed).join(',');
+      item.remove();
+      if(!input.value)box.querySelector('[data-clear-media]')?.remove();
+    });
   }
 
   async function saveSettings() {
