@@ -112,17 +112,31 @@ final class TVCD_Updater {
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 
+		$plugin         = plugin_basename( TVCD_FILE );
+		$was_active     = is_plugin_active( $plugin );
+		$was_network    = is_multisite() && is_plugin_active_for_network( $plugin );
 		delete_site_transient( 'update_plugins' );
 		wp_update_plugins();
 		$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
-		$result   = $upgrader->upgrade( plugin_basename( TVCD_FILE ), array( 'clear_update_cache' => true ) );
+		$result   = $upgrader->upgrade( $plugin, array( 'clear_update_cache' => true ) );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 		if ( ! $result ) {
 			return new WP_Error( 'tvcd_update_failed', __( 'WordPress could not install the plugin update. Check filesystem permissions and try again.', 'tinker-valley-content-dashboard' ), array( 'status' => 500 ) );
+		}
+		if ( $was_active || $was_network ) {
+			$activation = activate_plugin( $plugin, '', $was_network, true );
+			if ( is_wp_error( $activation ) ) {
+				return new WP_Error(
+					'tvcd_reactivation_failed',
+					sprintf( __( 'The update installed, but WordPress could not reactivate the plugin: %s', 'tinker-valley-content-dashboard' ), $activation->get_error_message() ),
+					array( 'status' => 500 )
+				);
+			}
 		}
 		return array(
 			'current'   => $status['latest'],

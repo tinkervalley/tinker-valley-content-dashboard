@@ -14,6 +14,10 @@ final class TVCD_REST {
 			'/site-settings'       => array( 'POST', 'save_site_settings', 'manage_options' ),
 			'/update-status'       => array( 'GET', 'update_status', 'update_plugins' ),
 			'/update-plugin'       => array( 'POST', 'update_plugin', 'update_plugins' ),
+			'/options-page/(?P<slug>[a-z0-9_-]+)' => array( 'GET', 'options_page', 'manage_options' ),
+			'/options-page-save/(?P<slug>[a-z0-9_-]+)' => array( 'POST', 'save_options_page', 'manage_options' ),
+			'/menu/(?P<id>\d+)'    => array( 'GET', 'menu', 'edit_theme_options' ),
+			'/menu-save/(?P<id>\d+)' => array( 'POST', 'save_menu', 'edit_theme_options' ),
 		);
 
 		foreach ( $routes as $route => $definition ) {
@@ -106,8 +110,160 @@ final class TVCD_REST {
 				'postTypes'   => $types,
 				'settings'    => $settings,
 				'siteSettings'=> self::site_settings(),
+				'optionPages' => current_user_can( 'manage_options' ) ? self::option_pages() : array(),
+				'menus'       => current_user_can( 'edit_theme_options' ) ? self::menus() : array(),
 			)
 		);
+	}
+
+	private static function option_pages() {
+		if ( ! function_exists( 'acf_get_options_pages' ) ) {
+			return array();
+		}
+		$pages = array();
+		foreach ( (array) acf_get_options_pages() as $key => $page ) {
+			$slug = sanitize_key( $page['menu_slug'] ?? ( is_string( $key ) ? $key : '' ) );
+			$cap  = $page['capability'] ?? 'manage_options';
+			if ( ! $slug || ! current_user_can( $cap ) || ! empty( $page['redirect'] ) ) {
+				continue;
+			}
+			$pages[] = array(
+				'slug'   => $slug,
+				'title'  => wp_strip_all_tags( $page['page_title'] ?? $page['menu_title'] ?? $slug ),
+				'postId' => $page['post_id'] ?? 'options',
+			);
+		}
+		return $pages;
+	}
+
+	private static function find_option_page( $slug ) {
+		foreach ( self::option_pages() as $page ) {
+			if ( $slug === $page['slug'] ) {
+				return $page;
+			}
+		}
+		return null;
+	}
+
+	public static function options_page( WP_REST_Request $request ) {
+		$page = self::find_option_page( sanitize_key( $request['slug'] ) );
+		if ( ! $page ) {
+			return new WP_Error( 'tvcd_options_page_missing', __( 'Options page not found.', 'tinker-valley-content-dashboard' ), array( 'status' => 404 ) );
+		}
+		$fields = array();
+		$values = array();
+		foreach ( (array) acf_get_field_groups( array( 'options_page' => $page['slug'] ) ) as $group ) {
+			foreach ( (array) acf_get_fields( $group ) as $field ) {
+				$prepared = self::prepare_field( $field, $group );
+				$fields[] = $prepared;
+				$values[ $prepared['key'] ] = self::editor_value( $prepared, get_field( $prepared['key'], $page['postId'], false ) );
+			}
+		}
+		return rest_ensure_response( array_merge( $page, array( 'fields' => $fields, 'values' => $values ) ) );
+	}
+
+	public static function save_options_page( WP_REST_Request $request ) {
+		$page = self::find_option_page( sanitize_key( $request['slug'] ) );
+		if ( ! $page ) {
+			return new WP_Error( 'tvcd_options_page_missing', __( 'Options page not found.', 'tinker-valley-content-dashboard' ), array( 'status' => 404 ) );
+		}
+		$data = (array) $request->get_json_params();
+		foreach ( (array) ( $data['fields'] ?? array() ) as $key => $value ) {
+			update_field( sanitize_text_field( $key ), $value, $page['postId'] );
+		}
+		do_action( 'acf/options_page/save', $page['postId'], $page['slug'] );
+		return self::options_page( $request );
+	}
+
+	private static function menus() {
+		$locations = get_nav_menu_locations();
+		return array_values(
+			array_map(
+				static function ( $menu ) use ( $locations ) {
+					$assigned = array_keys( array_filter( $locations, static function ( $id ) use ( $menu ) { return (int) $id === (int) $menu->term_id; } ) );
+					return array(
+						'id'        => (int) $menu->term_id,
+						'name'      => $menu->name,
+						'locations' => $assigned,
+					);
+				},
+				wp_get_nav_menus()
+			)
+		);
+	}
+
+	public static function menu( WP_REST_Request $request ) {
+		$menu = wp_get_nav_menu_object( (int) $request['id'] );
+		if ( ! $menu ) {
+			return new WP_Error( 'tvcd_menu_missing', __( 'Menu not found.', 'tinker-valley-content-dashboard' ), array( 'status' => 404 ) );
+		}
+		$items = array_values(
+			array_map(
+				static function ( $item ) {
+					return array(
+						'id'       => (int) $item->ID,
+						'title'    => html_entity_decode( $item->title, ENT_QUOTES | ENT_HTML5, get_bloginfo( 'charset' ) ?: 'UTF-8' ),
+						'url'      => $item->url,
+						'type'     => $item->type,
+						'object'   => $item->object,
+						'objectId' => (int) $item->object_id,
+						'parent'   => (int) $item->menu_item_parent,
+						'target'   => $item->target,
+						'attrTitle'=> $item->attr_title,
+						'description' => $item->description,
+						'classes'  => array_values( array_filter( (array) $item->classes ) ),
+						'xfn'      => $item->xfn,
+					);
+				},
+				(array) wp_get_nav_menu_items( $menu->term_id, array( 'update_post_term_cache' => false ) )
+			)
+		);
+		return rest_ensure_response( array( 'id' => (int) $menu->term_id, 'name' => $menu->name, 'items' => $items ) );
+	}
+
+	public static function save_menu( WP_REST_Request $request ) {
+		$menu_id = (int) $request['id'];
+		if ( ! wp_get_nav_menu_object( $menu_id ) ) {
+			return new WP_Error( 'tvcd_menu_missing', __( 'Menu not found.', 'tinker-valley-content-dashboard' ), array( 'status' => 404 ) );
+		}
+		$data     = (array) $request->get_json_params();
+		$incoming = array_values( (array) ( $data['items'] ?? array() ) );
+		$existing = array_map( 'intval', wp_list_pluck( (array) wp_get_nav_menu_items( $menu_id ), 'ID' ) );
+		$kept     = array_values( array_filter( array_map( static function ( $item ) { return max( 0, (int) ( $item['id'] ?? 0 ) ); }, $incoming ) ) );
+		foreach ( array_diff( $existing, $kept ) as $delete_id ) {
+			wp_delete_post( $delete_id, true );
+		}
+
+		$id_map = array();
+		foreach ( $incoming as $index => $item ) {
+			$old_id = (int) ( $item['id'] ?? 0 );
+			$parent = (int) ( $item['parent'] ?? 0 );
+			$args   = array(
+				'menu-item-title'     => wp_slash( sanitize_text_field( $item['title'] ?? '' ) ),
+				'menu-item-status'    => 'publish',
+				'menu-item-position'  => $index + 1,
+				'menu-item-parent-id' => $id_map[ $parent ] ?? $parent,
+				'menu-item-target'    => '_blank' === ( $item['target'] ?? '' ) ? '_blank' : '',
+				'menu-item-attr-title'=> wp_slash( sanitize_text_field( $item['attrTitle'] ?? '' ) ),
+				'menu-item-description'=> wp_slash( sanitize_textarea_field( $item['description'] ?? '' ) ),
+				'menu-item-classes'   => array_values( array_map( 'sanitize_html_class', (array) ( $item['classes'] ?? array() ) ) ),
+				'menu-item-xfn'       => wp_slash( sanitize_text_field( $item['xfn'] ?? '' ) ),
+				'menu-item-type'      => $item['type'] ?? 'custom',
+				'menu-item-object'    => $item['object'] ?? 'custom',
+				'menu-item-object-id' => (int) ( $item['objectId'] ?? 0 ),
+			);
+			if ( 'custom' === $args['menu-item-type'] ) {
+				$args['menu-item-url'] = esc_url_raw( $item['url'] ?? '' );
+			}
+			$result = wp_update_nav_menu_item( $menu_id, max( 0, $old_id ), $args );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			if ( $old_id < 0 ) {
+				$id_map[ $old_id ] = (int) $result;
+			}
+		}
+		return self::menu( $request );
 	}
 
 	public static function posts( WP_REST_Request $request ) {

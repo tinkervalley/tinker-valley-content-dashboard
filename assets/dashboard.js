@@ -1,7 +1,7 @@
 (() => {
   const root = document.querySelector('#tvcd-app');
   const boot = window.TVCD_BOOT;
-  const state = { types: [], active: null, items: [], loading: true, loadingMore: false, page: 0, pages: 0, total: 0, requestId: 0, editor: null, settings: false, siteSettingsPage: false, siteSettings: {}, updateStatus: null, checkingUpdate: false, updatingPlugin: false, search: '', appearance: {}, selected: new Set(), sortBy: '', sortOrder: '', installPrompt: null, navOpen: false };
+  const state = { types: [], active: null, items: [], loading: true, loadingMore: false, page: 0, pages: 0, total: 0, requestId: 0, editor: null, settings: false, siteSettingsPage: false, siteSettings: {}, optionPages: [], optionEditor: null, menus: [], menuPage: false, menuEditor: null, updateStatus: null, checkingUpdate: false, updatingPlugin: false, search: '', appearance: {}, selected: new Set(), sortBy: '', sortOrder: '', installPrompt: null, navOpen: false };
   const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const api = async (path, options={}) => {
     const response = await fetch(boot.restUrl + path, {
@@ -27,13 +27,13 @@
     root.innerHTML = `<div class="tvcd-shell">
       <aside class="tvcd-sidebar ${state.navOpen?'open':''}">
         <div class="tvcd-brand">${state.appearance.logo_url?`<span class="tvcd-brand-logo-tile"><img class="tvcd-brand-logo" src="${esc(state.appearance.logo_url)}" alt=""></span>`:'<div class="tvcd-mark">TV</div>'}<div><strong>Manage site</strong><small>${esc(boot.site.name)}</small></div><button class="tvcd-drawer-close" data-close-nav aria-label="Close navigation">${icon('no-alt')}</button></div>
-        <nav class="tvcd-nav"><span class="tvcd-nav-label">Content</span>${state.types.filter(t=>t.enabled).map(t=>`<button data-type="${esc(t.name)}" aria-label="${esc(t.config.menu_label||t.label)}" title="${esc(t.config.menu_label||t.label)}" class="${!state.settings&&!state.siteSettingsPage&&t.name===state.active?'active':''}"><i class="${esc(t.config.icon||'fa-solid fa-table-cells-large')}"></i><span>${esc(t.config.menu_label||t.label)}</span></button>`).join('')}${boot.canManage?`<div class="tvcd-nav-separator"></div><span class="tvcd-nav-label">Settings</span><button data-site-settings aria-label="Site Settings" title="Site Settings" class="${state.siteSettingsPage?'active':''}"><i class="fa-solid fa-globe"></i><span>Site Settings</span></button><button data-settings aria-label="Dashboard Settings" title="Dashboard Settings" class="${state.settings?'active':''}"><i class="fa-solid fa-gear"></i><span>Dashboard Settings</span></button>`:''}</nav>
+        <nav class="tvcd-nav"><span class="tvcd-nav-label">Content</span>${state.types.filter(t=>t.enabled).map(t=>`<button data-type="${esc(t.name)}" aria-label="${esc(t.config.menu_label||t.label)}" title="${esc(t.config.menu_label||t.label)}" class="${!state.settings&&!state.siteSettingsPage&&!state.optionEditor&&!state.menuPage&&t.name===state.active?'active':''}"><i class="${esc(t.config.icon||'fa-solid fa-table-cells-large')}"></i><span>${esc(t.config.menu_label||t.label)}</span></button>`).join('')}${boot.canManage&&(state.optionPages.length||state.menus.length)?`<div class="tvcd-nav-separator"></div><span class="tvcd-nav-label">Site tools</span>${state.optionPages.map(page=>`<button data-option-page="${esc(page.slug)}" aria-label="${esc(page.title)}" title="${esc(page.title)}" class="${state.optionEditor?.slug===page.slug?'active':''}"><i class="fa-solid fa-sliders"></i><span>${esc(page.title)}</span></button>`).join('')}${state.menus.length?`<button data-menus aria-label="Menus" title="Menus" class="${state.menuPage?'active':''}"><i class="fa-solid fa-bars-staggered"></i><span>Menus</span></button>`:''}`:''}${boot.canManage?`<div class="tvcd-nav-separator"></div><span class="tvcd-nav-label">Settings</span><button data-site-settings aria-label="Site Settings" title="Site Settings" class="${state.siteSettingsPage?'active':''}"><i class="fa-solid fa-globe"></i><span>Site Settings</span></button><button data-settings aria-label="Dashboard Settings" title="Dashboard Settings" class="${state.settings?'active':''}"><i class="fa-solid fa-gear"></i><span>Dashboard Settings</span></button>`:''}</nav>
         <div class="tvcd-sidebar-foot"><div class="tvcd-user"><img src="${esc(boot.user.avatar)}"><span>${esc(boot.user.name)}</span></div></div>
       </aside>
       <button class="tvcd-drawer-scrim ${state.navOpen?'show':''}" data-close-nav aria-label="Close navigation"></button>
       <main class="tvcd-main">
-        <header class="tvcd-topbar"><button class="tvcd-menu-button" data-open-nav aria-label="Open navigation"><i class="fa-solid fa-bars"></i></button><h1>${state.siteSettingsPage?'Site Settings':state.settings?'Dashboard Settings':'Content Dashboard'}</h1><div class="tvcd-top-actions">${state.installPrompt?`<button class="tvcd-btn tvcd-install" data-install-app>${icon('download')} Install app</button>`:''}<a class="tvcd-btn icon" href="${esc(boot.adminUrl)}" title="Back to WordPress Dashboard" aria-label="Back to WordPress Dashboard">${icon('dashboard')}</a><a class="tvcd-btn icon" href="${esc(boot.site.url)}" target="_blank" title="View site" aria-label="View site">${icon('external')}</a></div></header>
-        <section class="tvcd-content">${state.siteSettingsPage?siteSettingsContent():state.settings?settingsContent():state.loading?'<div class="tvcd-spinner"></div>':content(type)}</section>
+        <header class="tvcd-topbar"><button class="tvcd-menu-button" data-open-nav aria-label="Open navigation"><i class="fa-solid fa-bars"></i></button><h1>${state.optionEditor?state.optionEditor.title:state.menuPage?'Menus':state.siteSettingsPage?'Site Settings':state.settings?'Dashboard Settings':'Content Dashboard'}</h1><div class="tvcd-top-actions">${state.installPrompt?`<button class="tvcd-btn tvcd-install" data-install-app>${icon('download')} Install app</button>`:''}<a class="tvcd-btn icon" href="${esc(boot.adminUrl)}" title="Back to WordPress Dashboard" aria-label="Back to WordPress Dashboard">${icon('dashboard')}</a><a class="tvcd-btn icon" href="${esc(boot.site.url)}" target="_blank" title="View site" aria-label="View site">${icon('external')}</a></div></header>
+        <section class="tvcd-content">${state.optionEditor?optionsPageContent():state.menuPage?menuContent():state.siteSettingsPage?siteSettingsContent():state.settings?settingsContent():state.loading?'<div class="tvcd-spinner"></div>':content(type)}</section>
       </main>
     </div>${state.editor?editorMarkup():''}`;
     bind();
@@ -101,8 +101,8 @@
 
   function groupFields(fields) {
     const groups=[];
-    const visible=activeType()?.config.visible_fields||[];
-    const configured=!!activeType()?.config.visible_fields_configured;
+    const visible=state.optionEditor?[]:activeType()?.config.visible_fields||[];
+    const configured=state.optionEditor?false:!!activeType()?.config.visible_fields_configured;
     const baselineKeys=new Set((activeType()?.fields||[]).map(field=>field.key));
     fields.filter(f=>!f.key.startsWith('_')&&(!configured||visible.includes(f.key)||!baselineKeys.has(f.key))).forEach(field=>{
       let group=groups.find(g=>g.key===field.group_key);
@@ -157,6 +157,25 @@
     return `<div class="tvcd-heading"><div><h2>Site settings</h2><p>Manage the primary identity settings used throughout WordPress.</p></div><div class="tvcd-heading-actions"><button class="tvcd-btn primary" data-save-site-settings>Save site settings</button></div></div><div class="tvcd-settings-section tvcd-site-settings-card"><h3>Site identity</h3><div class="tvcd-field"><label>Site title</label><input type="text" data-site-field="title" value="${esc(site.title||'')}"></div><div class="tvcd-field"><label>Tagline</label><input type="text" data-site-field="tagline" value="${esc(site.tagline||'')}"></div><div class="tvcd-field"><label>Site icon</label><small>The square icon used for browser tabs, bookmarks, and mobile shortcuts.</small><div class="tvcd-logo-control"><div class="tvcd-site-icon-preview">${site.site_icon_url?`<img src="${esc(site.site_icon_url)}" alt="">`:'<span>No site icon</span>'}</div><input type="hidden" data-site-icon-id value="${esc(site.site_icon_id||0)}"><button type="button" class="tvcd-btn" data-pick-site-icon>${icon('format-image')} ${site.site_icon_url?'Change':'Select'} site icon</button>${site.site_icon_url?'<button type="button" class="tvcd-btn danger" data-remove-site-icon>Remove</button>':''}</div></div></div>`;
   }
 
+  function optionsPageContent() {
+    const page=state.optionEditor;
+    return `<div class="tvcd-heading"><div><h2>${esc(page.title)}</h2><p>Manage site-wide ACF options.</p></div><div class="tvcd-heading-actions"><button class="tvcd-btn primary" data-save-options-page>Save options</button></div></div>${page.fields.length?groupFields(page.fields).map(group=>groupMarkup(group,page.values)).join(''):'<div class="tvcd-empty"><h3>No fields found</h3><p>No ACF field groups are assigned to this options page.</p></div>'}`;
+  }
+
+  function menuDepth(item,items) {
+    const byId=new Map(items.map(entry=>[Number(entry.id),entry]));
+    let depth=0,parent=Number(item.parent),guard=0;
+    while(parent&&byId.has(parent)&&guard++<10){depth++;parent=Number(byId.get(parent).parent);}
+    return depth;
+  }
+
+  function menuContent() {
+    const menu=state.menuEditor;
+    return `<div class="tvcd-heading"><div><h2>Menus</h2><p>Edit navigation labels, links, order, and nesting.</p></div>${menu?'<div class="tvcd-heading-actions"><button class="tvcd-btn primary" data-save-menu>Save menu</button></div>':''}</div>
+      <div class="tvcd-settings-section tvcd-menu-manager"><div class="tvcd-field"><label>Menu</label><select data-menu-select><option value="">Choose a menu…</option>${state.menus.map(item=>`<option value="${item.id}" ${menu?.id===item.id?'selected':''}>${esc(item.name)}${item.locations.length?` · ${esc(item.locations.join(', '))}`:''}</option>`).join('')}</select></div>
+      ${menu?`<div class="tvcd-menu-items">${menu.items.map((item,index)=>`<div class="tvcd-menu-item" data-menu-item="${item.id}" style="--menu-depth:${menuDepth(item,menu.items)}"><div class="tvcd-menu-grip"><i class="fa-solid fa-grip-vertical"></i></div><div class="tvcd-menu-fields"><input data-menu-title value="${esc(item.title)}" aria-label="Navigation label">${item.type==='custom'?`<input data-menu-url value="${esc(item.url)}" aria-label="URL">`:`<small>${esc(item.url)}</small>`}<label class="tvcd-menu-target"><input type="checkbox" data-menu-target ${item.target==='_blank'?'checked':''}> New tab</label></div><div class="tvcd-menu-actions"><button class="tvcd-btn icon" data-menu-up="${index}" title="Move up">${icon('arrow-up-alt2')}</button><button class="tvcd-btn icon" data-menu-down="${index}" title="Move down">${icon('arrow-down-alt2')}</button><button class="tvcd-btn icon" data-menu-indent="${index}" title="Indent">${icon('arrow-right-alt2')}</button><button class="tvcd-btn icon" data-menu-outdent="${index}" title="Outdent">${icon('arrow-left-alt2')}</button><button class="tvcd-btn icon danger" data-menu-remove="${index}" title="Remove">${icon('trash')}</button></div></div>`).join('')}</div><div class="tvcd-menu-add"><h4>Add custom link</h4><div class="tvcd-config-grid"><div class="tvcd-field"><label>Label</label><input data-new-menu-title></div><div class="tvcd-field"><label>URL</label><input type="url" data-new-menu-url placeholder="https://"></div></div><button class="tvcd-btn" data-add-menu-item>${icon('plus-alt2')} Add to menu</button></div>`:'<p class="tvcd-section-copy">Choose an existing WordPress menu to begin.</p>'}</div>`;
+  }
+
   async function loadItems(append=false) {
     if (!state.active) { state.items=[]; state.loading=false; render(); return; }
     if (append && (state.loadingMore || state.page >= state.pages)) return;
@@ -179,9 +198,11 @@
   function bind() {
     root.querySelector('[data-open-nav]')?.addEventListener('click',()=>{state.navOpen=true;render();});
     root.querySelectorAll('[data-close-nav]').forEach(el=>el.onclick=()=>{state.navOpen=false;render();});
-    root.querySelectorAll('[data-type]').forEach(el=>el.onclick=()=>{state.navOpen=false;state.settings=false;state.siteSettingsPage=false;state.active=el.dataset.type;state.search='';state.selected.clear();const type=activeType();state.sortBy=type.config.sort_by;state.sortOrder=type.config.sort_order;loadItems();});
-    root.querySelector('[data-settings]')?.addEventListener('click',()=>{state.navOpen=false;state.siteSettingsPage=false;state.settings=true;render();});
-    root.querySelector('[data-site-settings]')?.addEventListener('click',()=>{state.navOpen=false;state.settings=false;state.siteSettingsPage=true;render();});
+    root.querySelectorAll('[data-type]').forEach(el=>el.onclick=()=>{state.navOpen=false;state.settings=false;state.siteSettingsPage=false;state.optionEditor=null;state.menuPage=false;state.menuEditor=null;state.active=el.dataset.type;state.search='';state.selected.clear();const type=activeType();state.sortBy=type.config.sort_by;state.sortOrder=type.config.sort_order;loadItems();});
+    root.querySelector('[data-settings]')?.addEventListener('click',()=>{state.navOpen=false;state.siteSettingsPage=false;state.optionEditor=null;state.menuPage=false;state.settings=true;render();});
+    root.querySelector('[data-site-settings]')?.addEventListener('click',()=>{state.navOpen=false;state.settings=false;state.optionEditor=null;state.menuPage=false;state.siteSettingsPage=true;render();});
+    root.querySelectorAll('[data-option-page]').forEach(el=>el.onclick=async()=>{state.navOpen=false;state.settings=false;state.siteSettingsPage=false;state.menuPage=false;try{state.optionEditor=await api(`options-page/${el.dataset.optionPage}`);render();}catch(err){notify(err.message);}});
+    root.querySelector('[data-menus]')?.addEventListener('click',()=>{state.navOpen=false;state.settings=false;state.siteSettingsPage=false;state.optionEditor=null;state.menuPage=true;render();});
     root.querySelector('[data-new]')?.addEventListener('click',()=>{state.editor={id:0,post_type:state.active,title:'',excerpt:'',status:'draft',fields:activeType().fields,values:{}};render();});
     root.querySelectorAll('[data-edit]').forEach(el=>el.onclick=async()=>{try{state.editor=await api(`post/${el.dataset.edit}`);render();}catch(e){notify(e.message)}});
     root.querySelectorAll('[data-delete]').forEach(el=>el.onclick=async()=>{if(!confirm('Move this item to the trash?'))return;try{await api(`post/${el.dataset.delete}`,{method:'DELETE'});notify('Moved to trash');loadItems();}catch(e){notify(e.message)}});
@@ -189,6 +210,18 @@
     root.querySelector('[data-save]')?.addEventListener('click',savePost);
     root.querySelector('[data-save-settings]')?.addEventListener('click',saveSettings);
     root.querySelector('[data-save-site-settings]')?.addEventListener('click',saveSiteSettings);
+    root.querySelector('[data-save-options-page]')?.addEventListener('click',saveOptionsPage);
+    root.querySelector('[data-menu-select]')?.addEventListener('change',event=>loadMenu(Number(event.target.value)));
+    root.querySelector('[data-save-menu]')?.addEventListener('click',saveMenu);
+    root.querySelector('[data-add-menu-item]')?.addEventListener('click',addMenuItem);
+    root.querySelectorAll('[data-menu-title]').forEach(el=>el.oninput=()=>{const item=state.menuEditor.items.find(entry=>String(entry.id)===el.closest('[data-menu-item]').dataset.menuItem);if(item)item.title=el.value;});
+    root.querySelectorAll('[data-menu-url]').forEach(el=>el.oninput=()=>{const item=state.menuEditor.items.find(entry=>String(entry.id)===el.closest('[data-menu-item]').dataset.menuItem);if(item)item.url=el.value;});
+    root.querySelectorAll('[data-menu-target]').forEach(el=>el.onchange=()=>{const item=state.menuEditor.items.find(entry=>String(entry.id)===el.closest('[data-menu-item]').dataset.menuItem);if(item)item.target=el.checked?'_blank':'';});
+    root.querySelectorAll('[data-menu-up]').forEach(el=>el.onclick=()=>moveMenuItem(Number(el.dataset.menuUp),-1));
+    root.querySelectorAll('[data-menu-down]').forEach(el=>el.onclick=()=>moveMenuItem(Number(el.dataset.menuDown),1));
+    root.querySelectorAll('[data-menu-indent]').forEach(el=>el.onclick=()=>indentMenuItem(Number(el.dataset.menuIndent)));
+    root.querySelectorAll('[data-menu-outdent]').forEach(el=>el.onclick=()=>outdentMenuItem(Number(el.dataset.menuOutdent)));
+    root.querySelectorAll('[data-menu-remove]').forEach(el=>el.onclick=()=>removeMenuItem(Number(el.dataset.menuRemove)));
     root.querySelector('[data-pick-site-icon]')?.addEventListener('click',openSiteIconPicker);
     root.querySelector('[data-remove-site-icon]')?.addEventListener('click',()=>{state.siteSettings.site_icon_id=0;state.siteSettings.site_icon_url='';render();});
     root.querySelectorAll('[data-enable]').forEach(el=>el.onchange=()=>{root.querySelector(`[data-config="${el.dataset.enable}"]`).hidden=!el.checked;});
@@ -220,14 +253,94 @@
   }
 
   async function savePost() {
-    const e=state.editor, data={post_type:e.post_type,fields:{}};
+    const e=state.editor, data={post_type:e.post_type,fields:serializeEditorFields()};
     root.querySelectorAll('[data-core]').forEach(el=>data[el.dataset.core]=el.value);
-    root.querySelectorAll('[data-field]').forEach(el=>{if(!el.closest('[data-row]')&&!el.closest('[data-acf-group]'))data.fields[el.dataset.field]=el.value;});
-    root.querySelectorAll('[data-checkbox-field]').forEach(box=>{if(!box.closest('[data-row]')&&!box.closest('[data-acf-group]'))data.fields[box.dataset.checkboxField]=[...box.querySelectorAll('input:checked')].map(el=>el.value);});
-    root.querySelectorAll('[data-media]').forEach(box=>{if(box.closest('[data-row]')||box.closest('[data-acf-group]'))return;const input=box.querySelector('[data-field]'),ids=input.value.split(',').filter(Boolean).map(Number);data.fields[input.dataset.field]=box.dataset.media==='gallery'?ids:(ids[0]||'');});
-    root.querySelectorAll('[data-repeater]').forEach(repeater=>{if(!repeater.closest('[data-row]')&&!repeater.closest('[data-acf-group]'))data.fields[repeater.dataset.repeater]=serializeRepeater(repeater);});
-    root.querySelectorAll('[data-acf-group]').forEach(group=>{if(!group.parentElement.closest('[data-row]')&&!group.parentElement.closest('[data-acf-group]'))data.fields[group.dataset.acfGroup]=serializeGroup(group);});
     try { await api(`post${e.id?'/'+e.id:''}`,{method:'POST',body:JSON.stringify(data)}); state.editor=null;notify('Content saved');loadItems(); } catch(err){notify(err.message)}
+  }
+
+  function serializeEditorFields() {
+    const fields={};
+    root.querySelectorAll('[data-field]').forEach(el=>{if(!el.closest('[data-row]')&&!el.closest('[data-acf-group]'))fields[el.dataset.field]=el.value;});
+    root.querySelectorAll('[data-checkbox-field]').forEach(box=>{if(!box.closest('[data-row]')&&!box.closest('[data-acf-group]'))fields[box.dataset.checkboxField]=[...box.querySelectorAll('input:checked')].map(el=>el.value);});
+    root.querySelectorAll('[data-media]').forEach(box=>{if(box.closest('[data-row]')||box.closest('[data-acf-group]'))return;const input=box.querySelector('[data-field]'),ids=input.value.split(',').filter(Boolean).map(Number);fields[input.dataset.field]=box.dataset.media==='gallery'?ids:(ids[0]||'');});
+    root.querySelectorAll('[data-repeater]').forEach(repeater=>{if(!repeater.closest('[data-row]')&&!repeater.closest('[data-acf-group]'))fields[repeater.dataset.repeater]=serializeRepeater(repeater);});
+    root.querySelectorAll('[data-acf-group]').forEach(group=>{if(!group.parentElement.closest('[data-row]')&&!group.parentElement.closest('[data-acf-group]'))fields[group.dataset.acfGroup]=serializeGroup(group);});
+    return fields;
+  }
+
+  async function saveOptionsPage() {
+    try{state.optionEditor=await api(`options-page-save/${state.optionEditor.slug}`,{method:'POST',body:JSON.stringify({fields:serializeEditorFields()})});notify('Options saved');render();}catch(err){notify(err.message);}
+  }
+
+  async function loadMenu(id) {
+    if(!id){state.menuEditor=null;render();return;}
+    try{state.menuEditor=await api(`menu/${id}`);render();}catch(err){notify(err.message);}
+  }
+
+  function menuIsDescendant(item,ancestorId,items=state.menuEditor.items) {
+    const byId=new Map(items.map(entry=>[Number(entry.id),entry]));
+    let parent=Number(item.parent),guard=0;
+    while(parent&&byId.has(parent)&&guard++<20){if(parent===Number(ancestorId))return true;parent=Number(byId.get(parent).parent);}
+    return false;
+  }
+
+  function menuSubtreeEnd(index) {
+    const items=state.menuEditor.items,parent=items[index];
+    let end=index+1;
+    while(end<items.length&&menuIsDescendant(items[end],parent.id,items))end++;
+    return end;
+  }
+
+  function moveMenuItem(index,direction) {
+    const items=state.menuEditor.items,item=items[index],parent=Number(item.parent);
+    if(direction<0){
+      let previous=-1;
+      for(let i=index-1;i>=0;i--){if(Number(items[i].parent)===parent){previous=i;break;}}
+      if(previous<0)return;
+      const end=menuSubtreeEnd(index),current=items.slice(index,end),before=items.slice(previous,index);
+      items.splice(previous,end-previous,...current,...before);
+    }else{
+      const end=menuSubtreeEnd(index);
+      let next=-1;
+      for(let i=end;i<items.length;i++){if(Number(items[i].parent)===parent){next=i;break;}}
+      if(next<0)return;
+      const nextEnd=menuSubtreeEnd(next),current=items.slice(index,end),after=items.slice(next,nextEnd);
+      items.splice(index,nextEnd-index,...after,...current);
+    }
+    render();
+  }
+
+  function indentMenuItem(index) {
+    if(index<1)return;
+    const item=state.menuEditor.items[index],previous=state.menuEditor.items[index-1];
+    if(menuIsDescendant(previous,item.id))return;
+    item.parent=previous.id;render();
+  }
+
+  function outdentMenuItem(index) {
+    const item=state.menuEditor.items[index];
+    if(!Number(item.parent))return;
+    const parent=state.menuEditor.items.find(entry=>Number(entry.id)===Number(item.parent));
+    item.parent=parent?Number(parent.parent):0;render();
+  }
+
+  function removeMenuItem(index) {
+    const items=state.menuEditor.items,item=items[index],parent=Number(item.parent);
+    items.forEach(entry=>{if(Number(entry.parent)===Number(item.id))entry.parent=parent;});
+    items.splice(index,1);render();
+  }
+
+  function addMenuItem() {
+    const title=root.querySelector('[data-new-menu-title]')?.value.trim();
+    const url=root.querySelector('[data-new-menu-url]')?.value.trim();
+    if(!title||!url){notify('Enter a label and URL.');return;}
+    const temporary=Math.min(-1,...state.menuEditor.items.map(item=>Number(item.id)))-1;
+    state.menuEditor.items.push({id:temporary,title,url,type:'custom',object:'custom',objectId:0,parent:0,target:''});
+    render();
+  }
+
+  async function saveMenu() {
+    try{state.menuEditor=await api(`menu-save/${state.menuEditor.id}`,{method:'POST',body:JSON.stringify({items:state.menuEditor.items})});notify('Menu saved');render();}catch(err){notify(err.message);}
   }
 
   function serializeRepeater(repeater) {
@@ -268,7 +381,7 @@
     return result;
   }
 
-  function findField(key, fields=state.editor?.fields||[]) {
+  function findField(key, fields=state.editor?.fields||state.optionEditor?.fields||[]) {
     for(const field of fields){if(field.key===key)return field;const nested=findField(key,field.sub_fields||[]);if(nested)return nested;}
     return null;
   }
@@ -423,5 +536,5 @@
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();state.installPrompt=event;render();});
   window.addEventListener('appinstalled',()=>{state.installPrompt=null;notify('Content Dashboard installed');});
   if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register(boot.swUrl,{scope:new URL(boot.swUrl).pathname.replace(/sw\.js$/,'')}).catch(()=>{}));
-  api('bootstrap').then(data=>{state.types=data.postTypes;state.appearance=data.settings.appearance;state.autoUpdates=!!data.settings.auto_updates;state.siteSettings=data.siteSettings||{};state.active=state.types.find(t=>t.enabled)?.name||null;const type=activeType();state.sortBy=type?.config.sort_by||'modified';state.sortOrder=type?.config.sort_order||'DESC';loadItems();}).catch(e=>{state.loading=false;render();notify(e.message)});
+  api('bootstrap').then(data=>{state.types=data.postTypes;state.appearance=data.settings.appearance;state.autoUpdates=!!data.settings.auto_updates;state.siteSettings=data.siteSettings||{};state.optionPages=data.optionPages||[];state.menus=data.menus||[];state.active=state.types.find(t=>t.enabled)?.name||null;const type=activeType();state.sortBy=type?.config.sort_by||'modified';state.sortOrder=type?.config.sort_order||'DESC';loadItems();}).catch(e=>{state.loading=false;render();notify(e.message)});
 })();
