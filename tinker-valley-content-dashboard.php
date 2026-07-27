@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Tinker Valley Content Dashboard
  * Description: A modern, front-end content dashboard for editing WordPress and ACF content.
- * Version: 0.8.18
+ * Version: 0.8.19
  * Author: Tinker Valley
  * Text Domain: tinker-valley-content-dashboard
  * Requires at least: 6.4
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TVCD_VERSION', '0.8.18' );
+define( 'TVCD_VERSION', '0.8.19' );
 define( 'TVCD_FILE', __FILE__ );
 define( 'TVCD_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TVCD_URL', plugin_dir_url( __FILE__ ) );
