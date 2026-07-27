@@ -3,7 +3,7 @@ Contributors: tinkervalley
 Tags: acf, content, dashboard, editor
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.9.0
+Stable tag: 0.9.1
 License: GPLv2 or later
 
 A modern, focused content dashboard for WordPress and Advanced Custom Fields.
@@ -25,6 +25,11 @@ are available in the card configuration and editor.
 4. Use the gear button to configure post types and card layouts.
 
 == Changelog ==
+
+= 0.9.1 =
+* Introduce the alternate Notion-inspired wide workspace design.
+* Add a thinner collapsible sidebar, compact navigation rows, and flatter content surfaces.
+* Refresh asset and service-worker caches for the redesign build.
 
 = 0.9.0 =
 * Discover and edit registered ACF options pages with full dashboard field support.

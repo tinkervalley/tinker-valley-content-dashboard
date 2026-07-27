@@ -1,7 +1,7 @@
 (() => {
   const root = document.querySelector('#tvcd-app');
   const boot = window.TVCD_BOOT;
-  const state = { types: [], active: null, items: [], loading: true, loadingMore: false, page: 0, pages: 0, total: 0, requestId: 0, editor: null, settings: false, siteSettingsPage: false, siteSettings: {}, optionPages: [], optionEditor: null, menus: [], menuPage: false, menuEditor: null, updateStatus: null, checkingUpdate: false, updatingPlugin: false, search: '', appearance: {}, selected: new Set(), sortBy: '', sortOrder: '', installPrompt: null, navOpen: false };
+  const state = { types: [], active: null, items: [], loading: true, loadingMore: false, page: 0, pages: 0, total: 0, requestId: 0, editor: null, settings: false, siteSettingsPage: false, siteSettings: {}, optionPages: [], optionEditor: null, menus: [], menuPage: false, menuEditor: null, updateStatus: null, checkingUpdate: false, updatingPlugin: false, search: '', appearance: {}, selected: new Set(), sortBy: '', sortOrder: '', installPrompt: null, navOpen: false, navCollapsed: localStorage.getItem('tvcd-nav-collapsed')==='1' };
   const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const api = async (path, options={}) => {
     const response = await fetch(boot.restUrl + path, {
@@ -24,9 +24,9 @@
   function render() {
     const type = activeType();
     applyAppearance();
-    root.innerHTML = `<div class="tvcd-shell">
+    root.innerHTML = `<div class="tvcd-shell ${state.navCollapsed?'nav-collapsed':''}">
       <aside class="tvcd-sidebar ${state.navOpen?'open':''}">
-        <div class="tvcd-brand">${state.appearance.logo_url?`<span class="tvcd-brand-logo-tile"><img class="tvcd-brand-logo" src="${esc(state.appearance.logo_url)}" alt=""></span>`:'<div class="tvcd-mark">TV</div>'}<div><strong>Manage site</strong><small>${esc(boot.site.name)}</small></div><button class="tvcd-drawer-close" data-close-nav aria-label="Close navigation">${icon('no-alt')}</button></div>
+        <div class="tvcd-brand">${state.appearance.logo_url?`<span class="tvcd-brand-logo-tile"><img class="tvcd-brand-logo" src="${esc(state.appearance.logo_url)}" alt=""></span>`:'<div class="tvcd-mark">TV</div>'}<div><strong>${esc(boot.site.name)}</strong><small>Manage site</small></div><button class="tvcd-collapse-nav" data-collapse-nav aria-label="${state.navCollapsed?'Expand':'Collapse'} navigation" title="${state.navCollapsed?'Expand':'Collapse'} navigation"><i class="fa-solid fa-angles-${state.navCollapsed?'right':'left'}"></i></button><button class="tvcd-drawer-close" data-close-nav aria-label="Close navigation">${icon('no-alt')}</button></div>
         <nav class="tvcd-nav"><span class="tvcd-nav-label">Content</span>${state.types.filter(t=>t.enabled).map(t=>`<button data-type="${esc(t.name)}" aria-label="${esc(t.config.menu_label||t.label)}" title="${esc(t.config.menu_label||t.label)}" class="${!state.settings&&!state.siteSettingsPage&&!state.optionEditor&&!state.menuPage&&t.name===state.active?'active':''}"><i class="${esc(t.config.icon||'fa-solid fa-table-cells-large')}"></i><span>${esc(t.config.menu_label||t.label)}</span></button>`).join('')}${boot.canManage&&(state.optionPages.length||state.menus.length)?`<div class="tvcd-nav-separator"></div><span class="tvcd-nav-label">Site tools</span>${state.optionPages.map(page=>`<button data-option-page="${esc(page.slug)}" aria-label="${esc(page.title)}" title="${esc(page.title)}" class="${state.optionEditor?.slug===page.slug?'active':''}"><i class="fa-solid fa-sliders"></i><span>${esc(page.title)}</span></button>`).join('')}${state.menus.length?`<button data-menus aria-label="Menus" title="Menus" class="${state.menuPage?'active':''}"><i class="fa-solid fa-bars-staggered"></i><span>Menus</span></button>`:''}`:''}${boot.canManage?`<div class="tvcd-nav-separator"></div><span class="tvcd-nav-label">Settings</span><button data-site-settings aria-label="Site Settings" title="Site Settings" class="${state.siteSettingsPage?'active':''}"><i class="fa-solid fa-globe"></i><span>Site Settings</span></button><button data-settings aria-label="Dashboard Settings" title="Dashboard Settings" class="${state.settings?'active':''}"><i class="fa-solid fa-gear"></i><span>Dashboard Settings</span></button>`:''}</nav>
         <div class="tvcd-sidebar-foot"><div class="tvcd-user"><img src="${esc(boot.user.avatar)}"><span>${esc(boot.user.name)}</span></div></div>
       </aside>
@@ -197,6 +197,7 @@
 
   function bind() {
     root.querySelector('[data-open-nav]')?.addEventListener('click',()=>{state.navOpen=true;render();});
+    root.querySelector('[data-collapse-nav]')?.addEventListener('click',()=>{state.navCollapsed=!state.navCollapsed;localStorage.setItem('tvcd-nav-collapsed',state.navCollapsed?'1':'0');render();});
     root.querySelectorAll('[data-close-nav]').forEach(el=>el.onclick=()=>{state.navOpen=false;render();});
     root.querySelectorAll('[data-type]').forEach(el=>el.onclick=()=>{state.navOpen=false;state.settings=false;state.siteSettingsPage=false;state.optionEditor=null;state.menuPage=false;state.menuEditor=null;state.active=el.dataset.type;state.search='';state.selected.clear();const type=activeType();state.sortBy=type.config.sort_by;state.sortOrder=type.config.sort_order;loadItems();});
     root.querySelector('[data-settings]')?.addEventListener('click',()=>{state.navOpen=false;state.siteSettingsPage=false;state.optionEditor=null;state.menuPage=false;state.settings=true;render();});
