@@ -99,6 +99,24 @@ final class TVCD_Settings {
 		}
 	}
 
+	public static function migrate_post_content_visibility() {
+		$settings = get_option( self::OPTION, array() );
+		if ( ! is_array( $settings ) || empty( $settings['post_types'] ) ) {
+			return;
+		}
+		$changed = false;
+		foreach ( $settings['post_types'] as &$config ) {
+			if ( ! empty( $config['visible_fields_configured'] ) && ! in_array( '_post_content', (array) ( $config['visible_fields'] ?? array() ), true ) ) {
+				$config['visible_fields'][] = '_post_content';
+				$changed = true;
+			}
+		}
+		unset( $config );
+		if ( $changed ) {
+			update_option( self::OPTION, $settings, false );
+		}
+	}
+
 	private static function sync_core_auto_updates( $enabled ) {
 		$plugin = plugin_basename( TVCD_FILE );
 		$list   = (array) get_site_option( 'auto_update_plugins', array() );

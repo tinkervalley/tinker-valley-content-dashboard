@@ -57,6 +57,9 @@ final class TVCD_Plugin {
 			if ( ! $installed_version || version_compare( $installed_version, '0.8.13', '<' ) ) {
 				TVCD_Settings::migrate_featured_image_visibility();
 			}
+			if ( ! $installed_version || version_compare( $installed_version, '0.9.2', '<' ) ) {
+				TVCD_Settings::migrate_post_content_visibility();
+			}
 			flush_rewrite_rules( false );
 			update_option( 'tvcd_version', TVCD_VERSION, false );
 		}

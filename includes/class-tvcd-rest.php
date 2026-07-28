@@ -78,7 +78,7 @@ final class TVCD_REST {
 			$config = TVCD_Settings::for_type( $name );
 			if ( empty( $config['visible_fields_configured'] ) ) {
 				$config['visible_fields'] = array_merge(
-					array( '_post_title', '_excerpt', '_status', '_featured_image' ),
+					array( '_post_title', '_post_content', '_excerpt', '_status', '_featured_image' ),
 					array_values(
 						array_map(
 							static function ( $field ) {
@@ -341,6 +341,9 @@ final class TVCD_REST {
 		if ( array_key_exists( 'excerpt', $data ) ) {
 			$postarr['post_excerpt'] = sanitize_textarea_field( $data['excerpt'] );
 		}
+		if ( array_key_exists( 'content', $data ) ) {
+			$postarr['post_content'] = (string) $data['content'];
+		}
 		if ( array_key_exists( 'status', $data ) && in_array( $data['status'], array( 'publish', 'draft', 'pending', 'private' ), true ) ) {
 			$postarr['post_status'] = $data['status'];
 		} elseif ( ! $id ) {
@@ -445,6 +448,7 @@ final class TVCD_REST {
 	private static function fields_for_type( $type, $post_id = 0 ) {
 		$fields = array(
 			array( 'key' => '_post_title', 'name' => '_post_title', 'label' => __( 'Post title', 'tinker-valley-content-dashboard' ), 'type' => 'text', 'group_key' => '_content', 'group_label' => __( 'Content', 'tinker-valley-content-dashboard' ) ),
+			array( 'key' => '_post_content', 'name' => '_post_content', 'label' => __( 'Post content', 'tinker-valley-content-dashboard' ), 'type' => 'textarea', 'group_key' => '_content', 'group_label' => __( 'Content', 'tinker-valley-content-dashboard' ) ),
 			array( 'key' => '_excerpt', 'name' => '_excerpt', 'label' => __( 'Excerpt', 'tinker-valley-content-dashboard' ), 'type' => 'textarea', 'group_key' => '_content', 'group_label' => __( 'Content', 'tinker-valley-content-dashboard' ) ),
 			array( 'key' => '_featured_image', 'name' => '_featured_image', 'label' => __( 'Featured image', 'tinker-valley-content-dashboard' ), 'type' => 'image', 'group_key' => '_content', 'group_label' => __( 'Content', 'tinker-valley-content-dashboard' ) ),
 		);
@@ -549,6 +553,7 @@ final class TVCD_REST {
 			'id'        => $post->ID,
 			'post_type' => $post->post_type,
 			'title'     => self::decode_text( get_the_title( $post ) ),
+			'content'   => $post->post_content,
 			'excerpt'   => self::decode_text( $post->post_excerpt ),
 			'status'    => $post->post_status,
 			'fields'    => $fields,
