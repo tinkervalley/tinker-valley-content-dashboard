@@ -164,6 +164,9 @@ final class TVCD_Plugin {
 
 		$appearance = $this->appearance();
 		$icon_hash  = $this->appearance_hash( $appearance );
+		if ( function_exists( 'wp_enqueue_editor' ) ) {
+			wp_enqueue_editor();
+		}
 		include TVCD_PATH . 'templates/dashboard.php';
 		exit;
 	}

@@ -79,5 +79,5 @@ body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 @media(max-width:800px){
 .tvcd-sidebar{background:rgba(247,247,245,.97)}.tvcd-nav button,.tvcd-shell.nav-collapsed .tvcd-nav button{flex-basis:44px;width:44px;min-width:44px;height:44px;min-height:44px;border-radius:6px}.tvcd-nav button i{font-size:16px}.tvcd-topbar{height:calc(52px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 10px 0}.tvcd-content{padding:22px 13px 28px}.tvcd-heading h2{font-size:25px}
 }
-.tvcd-post-content-field textarea{min-height:280px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.6}
-@media(max-width:800px){.tvcd-post-content-field textarea{min-height:220px}}
+.tvcd-post-content-field textarea{min-height:280px}.tvcd-post-content-field .wp-editor-wrap{border-radius:6px;overflow:hidden}.tvcd-post-content-field .wp-editor-container{border-color:rgba(55,53,47,.16)}.tvcd-post-content-field .mce-toolbar-grp,.tvcd-post-content-field .quicktags-toolbar{background:#f7f7f5}.tvcd-post-content-field .mce-btn{border-radius:4px}.tvcd-post-content-field .wp-switch-editor{height:28px;border-radius:5px 5px 0 0;font-size:11px}
+@media(max-width:800px){.tvcd-post-content-field textarea{min-height:220px}.tvcd-post-content-field .mce-toolbar .mce-btn{margin:1px}.tvcd-post-content-field .mce-toolbar .mce-ico{font-size:16px}}

@@ -22,6 +22,7 @@
   };
 
   function render() {
+    destroyPostContentEditor();
     const type = activeType();
     applyAppearance();
     root.innerHTML = `<div class="tvcd-shell ${state.navCollapsed?'nav-collapsed':''}">
@@ -37,7 +38,26 @@
       </main>
     </div>${state.editor?editorMarkup():''}`;
     bind();
-    requestAnimationFrame(()=>{alignFieldRows();updateMobileNavAlignment();});
+    requestAnimationFrame(()=>{alignFieldRows();updateMobileNavAlignment();initializePostContentEditor();});
+  }
+
+  function destroyPostContentEditor() {
+    if(window.wp?.editor&&document.querySelector('#tvcd-post-content-editor')){try{wp.editor.remove('tvcd-post-content-editor');}catch(e){}}
+  }
+
+  function initializePostContentEditor() {
+    if(!root.querySelector('#tvcd-post-content-editor')||!window.wp?.editor)return;
+    try{
+      wp.editor.initialize('tvcd-post-content-editor',{
+        mediaButtons:true,
+        quicktags:true,
+        tinymce:{
+          wpautop:true,
+          toolbar1:'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,fullscreen,wp_adv',
+          toolbar2:'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help'
+        }
+      });
+    }catch(e){}
   }
 
   function applyAppearance() {
@@ -132,7 +152,7 @@
     const visible=activeType()?.config.visible_fields||[], configured=!!activeType()?.config.visible_fields_configured, show=key=>!configured||visible.includes(key);
     return `<div class="tvcd-modal-backdrop"><div class="tvcd-modal"><div class="tvcd-modal-head"><div><small>${isNew?'Create':'Edit'}</small><h2>${esc(e.title||`New ${activeType().singular}`)}</h2></div><button class="tvcd-btn icon" data-close>${icon('no-alt')}</button></div><div class="tvcd-modal-body">
       ${show('_post_title')?`<div class="tvcd-field"><label>Title</label><input data-core="title" value="${esc(e.title)}"></div>`:''}
-      ${show('_post_content')?`<div class="tvcd-field tvcd-post-content-field"><label>Post content</label><textarea data-core="content">${esc(e.content||'')}</textarea><small>HTML and WordPress block markup are preserved.</small></div>`:''}
+      ${show('_post_content')?`<div class="tvcd-field tvcd-post-content-field"><label>Post content</label><textarea id="tvcd-post-content-editor" data-core="content">${esc(e.content||'')}</textarea><small>Use Visual mode for formatting or Text mode to edit the underlying markup.</small></div>`:''}
       ${show('_excerpt')?`<div class="tvcd-field"><label>Excerpt</label><textarea data-core="excerpt">${esc(e.excerpt)}</textarea></div>`:''}
       ${show('_status')?`<div class="tvcd-field"><label>Status</label><select data-core="status">${['draft','publish','pending','private'].map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}</select></div>`:''}
       ${show('_featured_image')?`<div class="tvcd-field"><label>Featured image</label>${inputFor({key:'_featured_image',type:'image'},e.values?._featured_image)}</div>`:''}
@@ -255,6 +275,7 @@
   }
 
   async function savePost() {
+    if(window.tinymce?.get('tvcd-post-content-editor'))window.tinymce.get('tvcd-post-content-editor').save();
     const e=state.editor, data={post_type:e.post_type,fields:serializeEditorFields()};
     root.querySelectorAll('[data-core]').forEach(el=>data[el.dataset.core]=el.value);
     try { await api(`post${e.id?'/'+e.id:''}`,{method:'POST',body:JSON.stringify(data)}); state.editor=null;notify('Content saved');loadItems(); } catch(err){notify(err.message)}
